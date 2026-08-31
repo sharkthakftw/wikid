@@ -1,23 +1,23 @@
 pub fn url_decode(s: &str) -> String {
     let mut bytes = Vec::with_capacity(s.len());
-    let mut i = 0;
-    let s_bytes = s.as_bytes();
-    while i < s_bytes.len() {
-        if s_bytes[i] == b'%' && i + 2 < s_bytes.len() {
-            if let Ok(hex_str) = std::str::from_utf8(&s_bytes[i + 1..i + 3]) {
-                if let Ok(b) = u8::from_str_radix(hex_str, 16) {
-                    bytes.push(b);
-                    i += 3;
-                    continue;
+    let mut iter = s.as_bytes().iter().copied();
+    while let Some(b) = iter.next() {
+        match b {
+            b'%' => {
+                let hex = iter.next().zip(iter.next()).and_then(|(h1, h2)| {
+                    let d1 = (h1 as char).to_digit(16)?;
+                    let d2 = (h2 as char).to_digit(16)?;
+                    Some((d1 * 16 + d2) as u8)
+                });
+                if let Some(val) = hex {
+                    bytes.push(val);
+                } else {
+                    bytes.push(b'%');
                 }
             }
+            b'+' => bytes.push(b' '),
+            other => bytes.push(other),
         }
-        if s_bytes[i] == b'+' {
-            bytes.push(b' ');
-        } else {
-            bytes.push(s_bytes[i]);
-        }
-        i += 1;
     }
     String::from_utf8(bytes).unwrap_or_else(|e| String::from_utf8_lossy(e.as_bytes()).into_owned())
 }
