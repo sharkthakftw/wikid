@@ -38,6 +38,11 @@ pub fn base64_encode(data: &[u8]) -> String {
     out
 }
 
+pub fn invalidate_kitty_cache() {
+    let mut cache_guard = KITTY_PAYLOAD_CACHE.lock().unwrap();
+    *cache_guard = None;
+}
+
 pub fn clear_all_kitty_images<W: Write>(writer: &mut W) -> io::Result<()> {
     write!(writer, "\x1b_Ga=d,d=a,q=2\x1b\\")?;
     writer.flush()

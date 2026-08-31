@@ -162,6 +162,11 @@ fn run_app(
                 Event::Mouse(mouse_event) if app.config.input.mouse_support => {
                     mouse::handle_mouse_event(app, mouse_event, size.width, size.height);
                 }
+                Event::Resize(_, _) => {
+                    app.graphics.last_kitty_render_tasks.clear();
+                    wikid::graphics::kitty::invalidate_kitty_cache();
+                    let _ = terminal.clear();
+                }
                 _ => {}
             }
         }
