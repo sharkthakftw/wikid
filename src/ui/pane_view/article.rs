@@ -63,6 +63,9 @@ pub fn render_article_pane(
                             &bytes, cols, rows,
                         )
                     {
+                        if pane.halfblock_cache.len() >= 50 {
+                            pane.halfblock_cache.clear();
+                        }
                         pane.halfblock_cache.insert((url, cols, rows), hb_lines);
                     }
                 }

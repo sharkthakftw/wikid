@@ -132,6 +132,7 @@ impl Pane {
         self.scroll_offset = 0;
         self.show_toc = false;
         self.selected_toc_idx = None;
+        self.halfblock_cache.clear();
     }
 
     #[allow(clippy::too_many_arguments)]
