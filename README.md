@@ -57,10 +57,9 @@ make install
 ```bash
 git clone https://github.com/sharkthakftw/wikid.git
 cd wikid
-cargo build --release
 
-# install the binary to your system path
-sudo install -Dm755 target/release/wikid /usr/bin/wikid
+# build and install the binary locally via cargo
+make install
 ```
 
 ## keybindings
