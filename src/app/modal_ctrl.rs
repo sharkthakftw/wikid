@@ -63,7 +63,18 @@ impl App {
 
         if matches!(self.active_pane().content, PaneContent::ArticleText { .. }) {
             self.categories_modal.cursor_idx = 0;
+            self.categories_modal.article_cursor_idx = 0;
+            self.categories_modal.focus_right = false;
             self.input_mode = InputMode::Categories;
+
+            let first_cat = if let PaneContent::ArticleText { parsed_doc, .. } = &self.active_pane().content {
+                parsed_doc.categories.first().cloned()
+            } else {
+                None
+            };
+            if let Some(cat) = first_cat {
+                self.fetch_category_members_if_needed(&cat);
+            }
         }
     }
 }
