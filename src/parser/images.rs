@@ -71,7 +71,8 @@ pub(crate) fn render_image_node(
 
     if let Some(cap) = caption {
         if !cap.trim().is_empty() {
-            let cap_line = format!("▲ {}", cap.trim());
+            doc.lines.push(Line::from(""));
+            let cap_line = cap.trim().to_string();
             let mut line = Line::from(vec![Span::styled(
                 cap_line,
                 Style::default()
