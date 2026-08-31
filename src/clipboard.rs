@@ -2,21 +2,22 @@ use std::io::Write;
 use std::process::{Command, Stdio};
 
 fn try_pipe_to_command(cmd: &str, args: &[&str], text: &str) -> bool {
-    if let Ok(mut child) = Command::new(cmd)
+    let mut child = match Command::new(cmd)
         .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
     {
-        if let Some(mut stdin) = child.stdin.take() {
-            let _ = stdin.write_all(text.as_bytes());
-        }
-        if let Ok(status) = child.wait() {
-            return status.success();
-        }
+        Ok(c) => c,
+        Err(_) => return false,
+    };
+
+    if let Some(mut stdin) = child.stdin.take() {
+        let _ = stdin.write_all(text.as_bytes());
     }
-    false
+
+    child.wait().is_ok_and(|s| s.success())
 }
 
 pub fn copy_to_clipboard(text: &str) -> bool {
@@ -28,11 +29,7 @@ pub fn copy_to_clipboard(text: &str) -> bool {
         ("clip.exe", &[]),
     ];
 
-    for &(cmd, args) in CANDIDATES {
-        if try_pipe_to_command(cmd, args, text) {
-            return true;
-        }
-    }
-
-    false
+    CANDIDATES
+        .iter()
+        .any(|&(cmd, args)| try_pipe_to_command(cmd, args, text))
 }
