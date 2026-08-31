@@ -130,6 +130,52 @@ pub fn render_article_pane(
     for (local_idx, orig_line) in parsed_doc.lines[view_start..view_end].iter().enumerate() {
         let line_idx = view_start + local_idx;
 
+        let resolved_proto = crate::graphics::resolve_protocol(app.config.reader.image_protocol);
+        let mut image_override = None;
+        if app.config.reader.show_images {
+            for img in &parsed_doc.images {
+                if line_idx >= img.line_idx && line_idx < img.line_idx + img.height_lines {
+                    let has_img = pane.loaded_images.contains_key(&img.url)
+                        || crate::graphics::cache::get_cached_image_path(&img.url).is_some();
+                    if resolved_proto.is_halfblocks() {
+                        let rel_row = line_idx - img.line_idx;
+                        let cols = img.width_cols;
+                        let rows = img.height_lines;
+                        let key = (img.url.clone(), cols, rows);
+                        if let Some(hb_lines) = pane.halfblock_cache.get(&key) {
+                            if let Some(hb_line) = hb_lines.get(rel_row) {
+                                image_override = Some(hb_line.clone());
+                            }
+                        }
+                    } else if resolved_proto.is_kitty() && has_img {
+                        image_override = Some(Line::from(""));
+                    }
+                    break;
+                }
+            }
+        }
+
+        if let Some(line) = image_override {
+            rendered_lines.push(line);
+            continue;
+        }
+
+        let needs_underline = has_underline && link_ptr < parsed_doc.links.len();
+        let needs_selected_link = selected_link
+            .is_some_and(|l| l.span_indices.iter().any(|(l_idx, _)| *l_idx == line_idx));
+        let needs_search = has_search_matches
+            && match_ptr < pane.local_matches.len()
+            && pane.local_matches[match_ptr].line_idx == line_idx;
+        let needs_selection = pane
+            .text_selection
+            .as_ref()
+            .is_some_and(|s| s.contains_line(line_idx));
+
+        if !needs_underline && !needs_selected_link && !needs_search && !needs_selection {
+            rendered_lines.push(orig_line.clone());
+            continue;
+        }
+
         let mut spans: Vec<Span<'_>> = orig_line
             .spans
             .iter()
@@ -227,31 +273,6 @@ pub fn render_article_pane(
 
         let mut line = Line::from(spans);
         line.alignment = orig_line.alignment;
-
-        let resolved_proto = crate::graphics::resolve_protocol(app.config.reader.image_protocol);
-        if app.config.reader.show_images {
-            for img in &parsed_doc.images {
-                if line_idx >= img.line_idx && line_idx < img.line_idx + img.height_lines {
-                    let has_img = pane.loaded_images.contains_key(&img.url)
-                        || crate::graphics::cache::get_cached_image_path(&img.url).is_some();
-                    if resolved_proto.is_halfblocks() {
-                        let rel_row = line_idx - img.line_idx;
-                        let cols = img.width_cols;
-                        let rows = img.height_lines;
-                        let key = (img.url.clone(), cols, rows);
-                        if let Some(hb_lines) = pane.halfblock_cache.get(&key) {
-                            if let Some(hb_line) = hb_lines.get(rel_row) {
-                                line = hb_line.clone();
-                            }
-                        }
-                    } else if resolved_proto.is_kitty() && has_img {
-                        line = Line::from("");
-                    }
-                    break;
-                }
-            }
-        }
-
         rendered_lines.push(line);
     }
 
