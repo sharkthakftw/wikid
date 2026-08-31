@@ -224,19 +224,21 @@ fn handle_modal_left_click(
                     crate::ui::modals::get_category_item_at(app, true, right_area, row)
                 {
                     let pane = app.active_pane();
-                    let target_title = if let PaneContent::ArticleText { parsed_doc, .. } = &pane.content {
-                        let selected_cat_idx = app
-                            .categories_modal
-                            .cursor_idx
-                            .min(parsed_doc.categories.len().saturating_sub(1));
-                        parsed_doc.categories.get(selected_cat_idx).and_then(|cat| {
-                            app.categories_modal.cached_members.get(cat).and_then(|members| {
-                                members.get(clicked_art_idx).cloned()
+                    let target_title =
+                        if let PaneContent::ArticleText { parsed_doc, .. } = &pane.content {
+                            let selected_cat_idx = app
+                                .categories_modal
+                                .cursor_idx
+                                .min(parsed_doc.categories.len().saturating_sub(1));
+                            parsed_doc.categories.get(selected_cat_idx).and_then(|cat| {
+                                app.categories_modal
+                                    .cached_members
+                                    .get(cat)
+                                    .and_then(|members| members.get(clicked_art_idx).cloned())
                             })
-                        })
-                    } else {
-                        None
-                    };
+                        } else {
+                            None
+                        };
 
                     if let Some(title) = target_title {
                         app.categories_modal.article_cursor_idx = clicked_art_idx;

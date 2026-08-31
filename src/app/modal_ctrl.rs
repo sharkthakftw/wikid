@@ -67,11 +67,12 @@ impl App {
             self.categories_modal.focus_right = false;
             self.input_mode = InputMode::Categories;
 
-            let first_cat = if let PaneContent::ArticleText { parsed_doc, .. } = &self.active_pane().content {
-                parsed_doc.categories.first().cloned()
-            } else {
-                None
-            };
+            let first_cat =
+                if let PaneContent::ArticleText { parsed_doc, .. } = &self.active_pane().content {
+                    parsed_doc.categories.first().cloned()
+                } else {
+                    None
+                };
             if let Some(cat) = first_cat {
                 self.fetch_category_members_if_needed(&cat);
             }

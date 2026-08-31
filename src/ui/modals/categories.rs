@@ -59,10 +59,7 @@ pub fn render_categories_modal(f: &mut Frame, app: &App, size: Rect) {
         app.config.ui.rounded_borders,
     );
 
-    let selected_cat_idx = app
-        .categories_modal
-        .cursor_idx
-        .min(total.saturating_sub(1));
+    let selected_cat_idx = app.categories_modal.cursor_idx.min(total.saturating_sub(1));
     let left_visible_rows = (left_area.height.saturating_sub(2)) as usize;
     let left_scroll = crate::ui::modals::utils::compute_centered_scroll(
         selected_cat_idx,
@@ -94,7 +91,10 @@ pub fn render_categories_modal(f: &mut Frame, app: &App, size: Rect) {
         .scroll((left_scroll as u16, 0));
     f.render_widget(left_paragraph, left_area);
 
-    let selected_category = categories.get(selected_cat_idx).map(|s| s.as_str()).unwrap_or("");
+    let selected_category = categories
+        .get(selected_cat_idx)
+        .map(|s| s.as_str())
+        .unwrap_or("");
     let right_title = if selected_category.is_empty() {
         "articles".to_string()
     } else {
@@ -172,12 +172,7 @@ pub fn render_categories_modal(f: &mut Frame, app: &App, size: Rect) {
     f.render_widget(right_paragraph, right_area);
 }
 
-pub fn get_category_item_at(
-    app: &App,
-    is_right: bool,
-    area: Rect,
-    target_y: u16,
-) -> Option<usize> {
+pub fn get_category_item_at(app: &App, is_right: bool, area: Rect, target_y: u16) -> Option<usize> {
     if target_y <= area.y || target_y >= area.y + area.height.saturating_sub(1) {
         return None;
     }

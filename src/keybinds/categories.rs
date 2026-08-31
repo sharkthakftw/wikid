@@ -8,14 +8,22 @@ pub fn handle_categories_mode(app: &mut App, key: KeyEvent) {
             let total_cats = parsed_doc.categories.len();
             let selected_cat = parsed_doc
                 .categories
-                .get(app.categories_modal.cursor_idx.min(total_cats.saturating_sub(1)))
+                .get(
+                    app.categories_modal
+                        .cursor_idx
+                        .min(total_cats.saturating_sub(1)),
+                )
                 .cloned();
             let selected_art = selected_cat
                 .as_ref()
                 .and_then(|c| app.categories_modal.cached_members.get(c))
                 .and_then(|m| {
-                    m.get(app.categories_modal.article_cursor_idx.min(m.len().saturating_sub(1)))
-                        .cloned()
+                    m.get(
+                        app.categories_modal
+                            .article_cursor_idx
+                            .min(m.len().saturating_sub(1)),
+                    )
+                    .cloned()
                 });
             (total_cats, selected_cat, selected_art)
         } else {
@@ -117,10 +125,7 @@ pub fn handle_categories_mode(app: &mut App, key: KeyEvent) {
         KeyCode::Char('y') => {
             let copy_url = if app.categories_modal.focus_right {
                 current_article.map(|title| {
-                    format!(
-                        "https://en.wikipedia.org/wiki/{}",
-                        title.replace(' ', "_")
-                    )
+                    format!("https://en.wikipedia.org/wiki/{}", title.replace(' ', "_"))
                 })
             } else {
                 current_category.map(|cat| {

@@ -154,7 +154,9 @@ impl App {
             },
             NetworkEvent::CategoryMembersLoaded { category, members } => {
                 self.categories_modal.fetching_categories.remove(&category);
-                self.categories_modal.cached_members.insert(category, members);
+                self.categories_modal
+                    .cached_members
+                    .insert(category, members);
             }
         }
     }
