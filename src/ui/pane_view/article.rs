@@ -63,6 +63,9 @@ pub fn render_article_pane(
                             &bytes, cols, rows,
                         )
                     {
+                        if pane.halfblock_cache.len() >= 50 {
+                            pane.halfblock_cache.clear();
+                        }
                         pane.halfblock_cache.insert((url, cols, rows), hb_lines);
                     }
                 }
@@ -100,12 +103,13 @@ pub fn render_article_pane(
         .and_then(|idx| parsed_doc.links.get(idx));
 
     let has_search_matches =
-        if !pane.local_matches.is_empty() && !pane.local_search_query.trim().is_empty() {
+        if !pane.search.matches.is_empty() && !pane.search.query.trim().is_empty() {
             let first_match_idx = pane
-                .local_matches
+                .search
+                .matches
                 .partition_point(|m| m.line_idx < view_start);
-            first_match_idx < pane.local_matches.len()
-                && pane.local_matches[first_match_idx].line_idx < view_end
+            first_match_idx < pane.search.matches.len()
+                && pane.search.matches[first_match_idx].line_idx < view_end
         } else {
             false
         };
@@ -113,19 +117,68 @@ pub fn render_article_pane(
     let mut rendered_lines: Vec<Line<'_>> = Vec::with_capacity(view_len);
 
     let mut link_ptr = first_link_idx;
-    let query_len = pane.local_search_query.len();
+    let query_len = pane.search.query.len();
     let mut match_ptr = if has_search_matches {
-        pane.local_matches
+        pane.search
+            .matches
             .partition_point(|m| m.line_idx < view_start)
     } else {
         0
     };
     let selected_match = pane
+        .search
         .selected_match_idx
-        .and_then(|idx| pane.local_matches.get(idx));
+        .and_then(|idx| pane.search.matches.get(idx));
 
     for (local_idx, orig_line) in parsed_doc.lines[view_start..view_end].iter().enumerate() {
         let line_idx = view_start + local_idx;
+
+        let resolved_proto = crate::graphics::resolve_protocol(app.config.reader.image_protocol);
+        let mut image_override = None;
+        if app.config.reader.show_images {
+            for img in &parsed_doc.images {
+                if line_idx >= img.line_idx && line_idx < img.line_idx + img.height_lines {
+                    let has_img = pane.loaded_images.contains_key(&img.url)
+                        || crate::graphics::cache::get_cached_image_path(&img.url).is_some();
+                    if resolved_proto.is_halfblocks() {
+                        let rel_row = line_idx - img.line_idx;
+                        let cols = img.width_cols;
+                        let rows = img.height_lines;
+                        let key = (img.url.clone(), cols, rows);
+                        if let Some(hb_lines) = pane.halfblock_cache.get(&key) {
+                            if let Some(hb_line) = hb_lines.get(rel_row) {
+                                image_override = Some(hb_line.clone());
+                            }
+                        }
+                    } else if resolved_proto.is_kitty() && has_img {
+                        image_override = Some(Line::from(""));
+                    }
+                    break;
+                }
+            }
+        }
+
+        if let Some(line) = image_override {
+            rendered_lines.push(line);
+            continue;
+        }
+
+        let needs_underline = has_underline && link_ptr < parsed_doc.links.len();
+        let needs_selected_link = selected_link
+            .is_some_and(|l| l.span_indices.iter().any(|(l_idx, _)| *l_idx == line_idx));
+        let needs_search = has_search_matches
+            && match_ptr < pane.search.matches.len()
+            && pane.search.matches[match_ptr].line_idx == line_idx;
+        let needs_selection = pane
+            .selection
+            .text_selection
+            .as_ref()
+            .is_some_and(|s| s.contains_line(line_idx));
+
+        if !needs_underline && !needs_selected_link && !needs_search && !needs_selection {
+            rendered_lines.push(orig_line.clone());
+            continue;
+        }
 
         let mut spans: Vec<Span<'_>> = orig_line
             .spans
@@ -187,10 +240,10 @@ pub fn render_article_pane(
 
         if has_search_matches {
             let mut line_matches = Vec::new();
-            while match_ptr < pane.local_matches.len()
-                && pane.local_matches[match_ptr].line_idx == line_idx
+            while match_ptr < pane.search.matches.len()
+                && pane.search.matches[match_ptr].line_idx == line_idx
             {
-                let m = &pane.local_matches[match_ptr];
+                let m = &pane.search.matches[match_ptr];
                 let is_active = selected_match
                     .is_some_and(|sm| sm.line_idx == m.line_idx && sm.char_offset == m.char_offset);
                 line_matches.push((m.char_offset, m.char_offset + query_len, is_active));
@@ -202,7 +255,7 @@ pub fn render_article_pane(
             }
         }
 
-        if let Some(selection) = &pane.text_selection {
+        if let Some(selection) = &pane.selection.text_selection {
             if selection.contains_line(line_idx) {
                 let (start, end) = selection.normalized();
                 let line_len: usize = spans.iter().map(|s| s.content.chars().count()).sum();
@@ -224,31 +277,6 @@ pub fn render_article_pane(
 
         let mut line = Line::from(spans);
         line.alignment = orig_line.alignment;
-
-        let resolved_proto = crate::graphics::resolve_protocol(app.config.reader.image_protocol);
-        if app.config.reader.show_images {
-            for img in &parsed_doc.images {
-                if line_idx >= img.line_idx && line_idx < img.line_idx + img.height_lines {
-                    let has_img = pane.loaded_images.contains_key(&img.url)
-                        || crate::graphics::cache::get_cached_image_path(&img.url).is_some();
-                    if resolved_proto.is_halfblocks() {
-                        let rel_row = line_idx - img.line_idx;
-                        let cols = img.width_cols;
-                        let rows = img.height_lines;
-                        let key = (img.url.clone(), cols, rows);
-                        if let Some(hb_lines) = pane.halfblock_cache.get(&key) {
-                            if let Some(hb_line) = hb_lines.get(rel_row) {
-                                line = hb_line.clone();
-                            }
-                        }
-                    } else if resolved_proto.is_kitty() && has_img {
-                        line = Line::from("");
-                    }
-                    break;
-                }
-            }
-        }
-
         rendered_lines.push(line);
     }
 
@@ -270,36 +298,23 @@ pub fn render_article_pane(
 
                 if let Some(path) = img_path {
                     if resolved_proto.is_kitty() {
-                        let (screen_y, visible_rows, top_clipped, bot_clipped) =
-                            if img_top < view_start {
-                                let top_clipped = view_start - img_top;
-                                let rows = img.height_lines.saturating_sub(top_clipped);
-                                let visible = (rows as u16).min(inner_rect.height);
-                                let bot_clipped = rows.saturating_sub(visible as usize);
-                                (inner_rect.y, visible, top_clipped, bot_clipped)
-                            } else {
-                                let rel_line = img_top - view_start;
-                                let max_rows = inner_rect.height.saturating_sub(rel_line as u16);
-                                let visible = (img.height_lines as u16).min(max_rows);
-                                let bot_clipped = img.height_lines.saturating_sub(visible as usize);
-                                (inner_rect.y + (rel_line as u16), visible, 0, bot_clipped)
-                            };
-
-                        let visible_cols = (img.width_cols as u16).min(inner_rect.width);
-                        let left_pad = inner_rect.width.saturating_sub(img.width_cols as u16) / 2;
-                        let screen_x = inner_rect.x + left_pad;
-
-                        if visible_rows > 0 && visible_cols > 0 {
+                        if let Some(bounds) = calculate_visible_image_bounds(
+                            img.line_idx,
+                            img.height_lines,
+                            img.width_cols,
+                            view_start,
+                            inner_rect,
+                        ) {
                             app.graphics
                                 .pending_image_renders
                                 .push(crate::app::ImageRenderTask {
                                     path,
-                                    screen_x,
-                                    screen_y,
-                                    cols: visible_cols,
-                                    rows: visible_rows,
-                                    crop_top_lines: top_clipped as u16,
-                                    crop_bot_lines: bot_clipped as u16,
+                                    screen_x: bounds.screen_x,
+                                    screen_y: bounds.screen_y,
+                                    cols: bounds.visible_cols,
+                                    rows: bounds.visible_rows,
+                                    crop_top_lines: bounds.top_clipped,
+                                    crop_bot_lines: bounds.bot_clipped,
                                 });
                         }
                     }
@@ -497,4 +512,52 @@ pub fn get_link_at_coord(
         .links
         .iter()
         .position(|link| link.span_indices.contains(&(line_idx, span_idx)))
+}
+
+pub struct VisibleImageBounds {
+    pub screen_x: u16,
+    pub screen_y: u16,
+    pub visible_cols: u16,
+    pub visible_rows: u16,
+    pub top_clipped: u16,
+    pub bot_clipped: u16,
+}
+
+pub fn calculate_visible_image_bounds(
+    img_top: usize,
+    img_height: usize,
+    img_width: usize,
+    view_start: usize,
+    inner_rect: Rect,
+) -> Option<VisibleImageBounds> {
+    let (screen_y, visible_rows, top_clipped, bot_clipped) = if img_top < view_start {
+        let top_clipped = view_start - img_top;
+        let rows = img_height.saturating_sub(top_clipped);
+        let visible = (rows as u16).min(inner_rect.height);
+        let bot_clipped = rows.saturating_sub(visible as usize);
+        (inner_rect.y, visible, top_clipped as u16, bot_clipped as u16)
+    } else {
+        let rel_line = img_top - view_start;
+        let max_rows = inner_rect.height.saturating_sub(rel_line as u16);
+        let visible = (img_height as u16).min(max_rows);
+        let bot_clipped = img_height.saturating_sub(visible as usize);
+        (inner_rect.y + (rel_line as u16), visible, 0, bot_clipped as u16)
+    };
+
+    let visible_cols = (img_width as u16).min(inner_rect.width);
+    let left_pad = inner_rect.width.saturating_sub(img_width as u16) / 2;
+    let screen_x = inner_rect.x + left_pad;
+
+    if visible_rows > 0 && visible_cols > 0 {
+        Some(VisibleImageBounds {
+            screen_x,
+            screen_y,
+            visible_cols,
+            visible_rows,
+            top_clipped,
+            bot_clipped,
+        })
+    } else {
+        None
+    }
 }

@@ -30,21 +30,16 @@ pub fn fetch_category_members(
     };
     let limit_str = limit.clamp(1, 100).to_string();
 
-    let res = agent
+    let req = agent
         .get(url)
-        .timeout(std::time::Duration::from_secs(timeout_secs.max(1)))
         .query("action", "query")
         .query("list", "categorymembers")
         .query("cmtitle", &cmtitle)
         .query("cmlimit", &limit_str)
         .query("cmnamespace", "0")
-        .query("format", "json")
-        .call()
-        .map_err(|e| super::ApiError::Network(e.to_string()))?;
+        .query("format", "json");
 
-    let resp: CategoryMembersResponse = res
-        .into_json()
-        .map_err(|e| super::ApiError::Parse(e.to_string()))?;
+    let resp: CategoryMembersResponse = super::send_request_json(req, timeout_secs)?;
 
     let articles = resp
         .query

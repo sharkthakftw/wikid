@@ -15,27 +15,29 @@ static KITTY_PAYLOAD_CACHE: Mutex<Option<HashMap<PathBuf, CachedKittyPayload>>> 
 static KITTY_NEXT_ID: Mutex<u32> = Mutex::new(1);
 
 pub fn base64_encode(data: &[u8]) -> String {
-    let mut out = String::with_capacity(data.len().div_ceil(3) * 4);
+    let mut out = Vec::with_capacity(data.len().div_ceil(3) * 4);
     for chunk in data.chunks(3) {
         let b0 = chunk[0] as usize;
         let b1 = chunk.get(1).copied().unwrap_or(0) as usize;
         let b2 = chunk.get(2).copied().unwrap_or(0) as usize;
         let triple = (b0 << 16) | (b1 << 8) | b2;
 
-        out.push(BASE64_ALPHABET[(triple >> 18) & 0x3F] as char);
-        out.push(BASE64_ALPHABET[(triple >> 12) & 0x3F] as char);
-        out.push(if chunk.len() > 1 {
-            BASE64_ALPHABET[(triple >> 6) & 0x3F] as char
-        } else {
-            '='
-        });
-        out.push(if chunk.len() > 2 {
-            BASE64_ALPHABET[triple & 0x3F] as char
-        } else {
-            '='
-        });
+        out.extend([
+            BASE64_ALPHABET[(triple >> 18) & 0x3F],
+            BASE64_ALPHABET[(triple >> 12) & 0x3F],
+            if chunk.len() > 1 {
+                BASE64_ALPHABET[(triple >> 6) & 0x3F]
+            } else {
+                b'='
+            },
+            if chunk.len() > 2 {
+                BASE64_ALPHABET[triple & 0x3F]
+            } else {
+                b'='
+            },
+        ]);
     }
-    out
+    String::from_utf8(out).unwrap_or_default()
 }
 
 pub fn invalidate_kitty_cache() {

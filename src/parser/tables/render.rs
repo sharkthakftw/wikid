@@ -150,6 +150,7 @@ pub fn render_grid(
             doc.lines.push(Line::from(line_spans));
         }
 
+        let mut row_links = Vec::new();
         for col_i in 0..num_cols {
             if let Some(links) = cell_rendered_links.get(r).and_then(|row| row.get(col_i)) {
                 for (target, text, coords) in links {
@@ -162,7 +163,7 @@ pub fn render_grid(
                         }
                     }
                     if !span_indices.is_empty() {
-                        doc.links.push(Link {
+                        row_links.push(Link {
                             title: target.clone(),
                             text: text.clone(),
                             span_indices,
@@ -171,6 +172,8 @@ pub fn render_grid(
                 }
             }
         }
+        row_links.sort_by_key(|link| link.span_indices[0]);
+        doc.links.extend(row_links);
 
         if r + 1 < num_rows {
             let is_header_sep = grid.cells[r].iter().any(|cell| match cell {

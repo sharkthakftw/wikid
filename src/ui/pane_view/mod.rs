@@ -61,6 +61,7 @@ fn render_pane_at(
         max_image_height: app.config.reader.max_image_height,
     };
     let pane = &mut app.tabs[tab_idx].panes[pane_idx];
+    pane.viewport_width = content_width;
     pane.ensure_parsed_width(render_opts);
     pane.viewport_height = if app.zen_mode {
         rect.height as usize

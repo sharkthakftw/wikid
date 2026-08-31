@@ -4,6 +4,17 @@ use crate::app::App;
 use crate::layout::SplitDirection;
 
 impl App {
+    pub(crate) fn find_pane(&self, target_id: usize) -> Option<&Pane> {
+        for tab in &self.tabs {
+            for pane in &tab.panes {
+                if pane.id == target_id {
+                    return Some(pane);
+                }
+            }
+        }
+        None
+    }
+
     pub(crate) fn find_pane_mut(&mut self, target_id: usize) -> Option<&mut Pane> {
         for tab in &mut self.tabs {
             for pane in &mut tab.panes {

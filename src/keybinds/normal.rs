@@ -100,7 +100,7 @@ pub fn handle_normal_mode(app: &mut App, key: KeyEvent, term_width: u16, term_he
 
         match key.code {
             KeyCode::Esc => {
-                app.active_pane_mut().text_selection = None;
+                app.active_pane_mut().selection.text_selection = None;
                 app.clear_local_search();
             }
             KeyCode::Char('q') => {

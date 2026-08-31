@@ -226,20 +226,20 @@ impl App {
     pub fn enter_local_search_mode(&mut self) {
         self.input_mode = crate::app::InputMode::LocalSearch;
         let pane = self.active_pane_mut();
-        pane.local_search_query.clear();
-        pane.local_matches.clear();
-        pane.selected_match_idx = None;
+        pane.search.query.clear();
+        pane.search.matches.clear();
+        pane.search.selected_match_idx = None;
     }
 
     pub fn clear_local_search(&mut self) {
         let pane = self.active_pane_mut();
-        pane.local_search_query.clear();
-        pane.local_matches.clear();
-        pane.selected_match_idx = None;
+        pane.search.query.clear();
+        pane.search.matches.clear();
+        pane.search.selected_match_idx = None;
     }
 
     pub(crate) fn keep_local_match_visible(pane: &mut crate::app::pane::Pane, term_height: u16) {
-        let target_line = match (pane.selected_match_idx, &pane.local_matches) {
+        let target_line = match (pane.search.selected_match_idx, &pane.search.matches) {
             (Some(idx), matches) if !matches.is_empty() => matches[idx].line_idx,
             _ => return,
         };
@@ -263,10 +263,10 @@ impl App {
     }
 
     fn sync_link_focus_to_current_match(pane: &mut Pane) {
-        let Some(match_idx) = pane.selected_match_idx else {
+        let Some(match_idx) = pane.search.selected_match_idx else {
             return;
         };
-        let Some(m) = pane.local_matches.get(match_idx) else {
+        let Some(m) = pane.search.matches.get(match_idx) else {
             return;
         };
         if let PaneContent::ArticleText { parsed_doc, .. } = &pane.content {
@@ -283,8 +283,8 @@ impl App {
     pub fn update_local_search(&mut self, term_height: u16) {
         let pane = self.active_pane_mut();
         pane.recompute_local_matches();
-        if !pane.local_matches.is_empty() {
-            pane.selected_match_idx = Some(0);
+        if !pane.search.matches.is_empty() {
+            pane.search.selected_match_idx = Some(0);
             Self::keep_local_match_visible(pane, term_height);
             Self::sync_link_focus_to_current_match(pane);
         }
@@ -292,25 +292,25 @@ impl App {
 
     pub fn next_local_match(&mut self, term_height: u16) {
         let pane = self.active_pane_mut();
-        if pane.local_matches.is_empty() {
+        if pane.search.matches.is_empty() {
             return;
         }
-        let next_idx = match pane.selected_match_idx {
-            Some(idx) => (idx + 1) % pane.local_matches.len(),
+        let next_idx = match pane.search.selected_match_idx {
+            Some(idx) => (idx + 1) % pane.search.matches.len(),
             None => 0,
         };
-        pane.selected_match_idx = Some(next_idx);
+        pane.search.selected_match_idx = Some(next_idx);
         Self::keep_local_match_visible(pane, term_height);
         Self::sync_link_focus_to_current_match(pane);
     }
 
     pub fn prev_local_match(&mut self, term_height: u16) {
         let pane = self.active_pane_mut();
-        if pane.local_matches.is_empty() {
+        if pane.search.matches.is_empty() {
             return;
         }
-        let len = pane.local_matches.len();
-        let prev_idx = match pane.selected_match_idx {
+        let len = pane.search.matches.len();
+        let prev_idx = match pane.search.selected_match_idx {
             Some(idx) => {
                 if idx == 0 {
                     len - 1
@@ -320,7 +320,7 @@ impl App {
             }
             None => len - 1,
         };
-        pane.selected_match_idx = Some(prev_idx);
+        pane.search.selected_match_idx = Some(prev_idx);
         Self::keep_local_match_visible(pane, term_height);
         Self::sync_link_focus_to_current_match(pane);
     }

@@ -47,12 +47,12 @@ pub fn handle_local_search_mode(app: &mut App, key: KeyEvent, term_height: u16) 
     match key.code {
         KeyCode::Char(c) => {
             let pane = app.active_pane_mut();
-            pane.local_search_query.push(c);
+            pane.search.query.push(c);
             app.update_local_search(term_height);
         }
         KeyCode::Backspace => {
             let pane = app.active_pane_mut();
-            pane.local_search_query.pop();
+            pane.search.query.pop();
             app.update_local_search(term_height);
         }
         KeyCode::Enter => {
