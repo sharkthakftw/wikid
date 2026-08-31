@@ -152,6 +152,27 @@ impl App {
                     self.set_status_message(format!("update check failed: {}", err));
                 }
             },
+            NetworkEvent::CategoryMembersLoaded { category, members } => {
+                self.categories_modal.fetching_categories.remove(&category);
+                self.categories_modal.cached_members.insert(category, members);
+            }
+        }
+    }
+
+    pub fn fetch_category_members_if_needed(&mut self, category: &str) {
+        if !self.categories_modal.cached_members.contains_key(category)
+            && !self.categories_modal.fetching_categories.contains(category)
+        {
+            self.categories_modal
+                .fetching_categories
+                .insert(category.to_string());
+            let _ = self
+                .cmd_tx
+                .send(crate::api::NetworkCommand::FetchCategoryMembers {
+                    category: category.to_string(),
+                    limit: 50,
+                    timeout: self.config.network.timeout,
+                });
         }
     }
 }
