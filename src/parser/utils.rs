@@ -229,6 +229,45 @@ pub fn decode_html_entities(s: &str) -> std::borrow::Cow<'_, str> {
     std::borrow::Cow::Owned(result)
 }
 
+pub fn strip_html_tags(input: &str) -> String {
+    let mut in_tag = false;
+    let mut in_comment = false;
+    let mut result = String::with_capacity(input.len());
+    let mut chars = input.chars();
+
+    while let Some(c) = chars.next() {
+        if in_comment {
+            if c == '-' && chars.as_str().starts_with("->") {
+                chars.next();
+                chars.next();
+                in_comment = false;
+            }
+            continue;
+        }
+        if c == '<' {
+            if chars.as_str().starts_with("!--") {
+                chars.next();
+                chars.next();
+                chars.next();
+                in_comment = true;
+            } else {
+                in_tag = true;
+            }
+            continue;
+        }
+        if c == '>' && in_tag {
+            in_tag = false;
+            continue;
+        }
+        if !in_tag {
+            result.push(c);
+        }
+    }
+
+    let decoded = decode_html_entities(&result);
+    decoded.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
 pub fn to_superscript_char(c: char) -> char {
     match c {
         '0' => '⁰',
