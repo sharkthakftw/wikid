@@ -25,7 +25,8 @@ pub(crate) fn render_image_node(
 
     let (cols, rows) = calculate_terminal_dimensions(width_px, height_px, max_cols, max_rows);
 
-    let line_idx = doc.lines.len() + 1;
+    doc.lines.push(Line::from(""));
+    let line_idx = doc.lines.len();
 
     let image_block = ImageBlock {
         url,
@@ -36,7 +37,6 @@ pub(crate) fn render_image_node(
         width_cols: cols,
     };
 
-    doc.lines.push(Line::from(""));
     let inner_width = cols.saturating_sub(2);
     for r in 0..rows {
         let content = if r == 0 {

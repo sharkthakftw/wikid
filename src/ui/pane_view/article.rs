@@ -42,7 +42,7 @@ pub fn render_article_pane(
                     img.line_idx + img.height_lines > view_start && img.line_idx < view_end
                 })
                 .filter_map(|img| {
-                    let cols = img.width_cols.saturating_sub(2);
+                    let cols = img.width_cols;
                     let rows = img.height_lines;
                     let key = (img.url.clone(), cols, rows);
                     if !pane.halfblock_cache.contains_key(&key) {
@@ -226,17 +226,23 @@ pub fn render_article_pane(
         line.alignment = orig_line.alignment;
 
         let resolved_proto = crate::graphics::resolve_protocol(app.config.reader.image_protocol);
-        if resolved_proto.is_halfblocks() && app.config.reader.show_images {
+        if app.config.reader.show_images {
             for img in &parsed_doc.images {
                 if line_idx >= img.line_idx && line_idx < img.line_idx + img.height_lines {
-                    let rel_row = line_idx - img.line_idx;
-                    let cols = img.width_cols.saturating_sub(2);
-                    let rows = img.height_lines;
-                    let key = (img.url.clone(), cols, rows);
-                    if let Some(hb_lines) = pane.halfblock_cache.get(&key) {
-                        if let Some(hb_line) = hb_lines.get(rel_row) {
-                            line = hb_line.clone();
+                    let has_img = pane.loaded_images.contains_key(&img.url)
+                        || crate::graphics::cache::get_cached_image_path(&img.url).is_some();
+                    if resolved_proto.is_halfblocks() {
+                        let rel_row = line_idx - img.line_idx;
+                        let cols = img.width_cols;
+                        let rows = img.height_lines;
+                        let key = (img.url.clone(), cols, rows);
+                        if let Some(hb_lines) = pane.halfblock_cache.get(&key) {
+                            if let Some(hb_line) = hb_lines.get(rel_row) {
+                                line = hb_line.clone();
+                            }
                         }
+                    } else if resolved_proto.is_kitty() && has_img {
+                        line = Line::from("");
                     }
                     break;
                 }
@@ -264,28 +270,24 @@ pub fn render_article_pane(
 
                 if let Some(path) = img_path {
                     if resolved_proto.is_kitty() {
-                        let img_inner_top = img_top + 1;
-                        let img_inner_height = img.height_lines.saturating_sub(2);
-
                         let (screen_y, visible_rows, top_clipped, bot_clipped) =
-                            if img_inner_top < view_start {
-                                let top_clipped = view_start - img_inner_top;
-                                let rows = img_inner_height.saturating_sub(top_clipped);
+                            if img_top < view_start {
+                                let top_clipped = view_start - img_top;
+                                let rows = img.height_lines.saturating_sub(top_clipped);
                                 let visible = (rows as u16).min(inner_rect.height);
                                 let bot_clipped = rows.saturating_sub(visible as usize);
                                 (inner_rect.y, visible, top_clipped, bot_clipped)
                             } else {
-                                let rel_line = img_inner_top - view_start;
+                                let rel_line = img_top - view_start;
                                 let max_rows = inner_rect.height.saturating_sub(rel_line as u16);
-                                let visible = (img_inner_height as u16).min(max_rows);
-                                let bot_clipped = img_inner_height.saturating_sub(visible as usize);
+                                let visible = (img.height_lines as u16).min(max_rows);
+                                let bot_clipped = img.height_lines.saturating_sub(visible as usize);
                                 (inner_rect.y + (rel_line as u16), visible, 0, bot_clipped)
                             };
 
-                        let visible_cols = (img.width_cols.saturating_sub(2) as u16)
-                            .min(inner_rect.width.saturating_sub(2));
+                        let visible_cols = (img.width_cols as u16).min(inner_rect.width);
                         let left_pad = inner_rect.width.saturating_sub(img.width_cols as u16) / 2;
-                        let screen_x = inner_rect.x + left_pad + 1;
+                        let screen_x = inner_rect.x + left_pad;
 
                         if visible_rows > 0 && visible_cols > 0 {
                             app.graphics
