@@ -9,7 +9,9 @@ pub mod settings;
 pub mod toc;
 pub mod utils;
 
-pub use categories::{compute_categories_modal_area, render_categories_modal};
+pub use categories::{
+    compute_categories_modal_areas, get_category_item_at, render_categories_modal,
+};
 pub use daily_feed::{
     compute_daily_feed_modal_area, get_feed_entries, get_ongoing_links, get_otd_tab_at,
     get_recent_deaths_links, parse_onthisday_event, parse_story_html, render_daily_feed_modal,

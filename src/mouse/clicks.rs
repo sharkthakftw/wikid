@@ -184,36 +184,70 @@ fn handle_modal_left_click(
     }
 
     if app.input_mode == InputMode::Categories {
-        let area = crate::ui::modals::compute_categories_modal_area(size);
-        if col >= area.x && col < area.x + area.width && row >= area.y && row < area.y + area.height
-        {
-            let hit =
-                if let PaneContent::ArticleText { parsed_doc, .. } = &app.active_pane().content {
-                    let total = parsed_doc.categories.len();
-                    let inner_height = area.height.saturating_sub(2) as usize;
-                    let selected_idx = app.categories_modal.cursor_idx.min(total.saturating_sub(1));
-                    let scroll = if total <= inner_height || inner_height == 0 {
-                        0
-                    } else {
-                        selected_idx
-                            .saturating_sub(inner_height / 2)
-                            .min(total.saturating_sub(inner_height))
-                    };
-                    crate::ui::modals::categories::get_category_row_at(area, row, total, scroll)
-                        .and_then(|idx| {
-                            parsed_doc
-                                .categories
-                                .get(idx)
-                                .map(|cat| (idx, format!("Category:{}", cat)))
-                        })
-                } else {
-                    None
-                };
+        let (container_area, left_area, right_area) =
+            crate::ui::modals::compute_categories_modal_areas(size);
 
-            if let Some((clicked_idx, cat_title)) = hit {
-                app.categories_modal.cursor_idx = clicked_idx;
-                app.input_mode = InputMode::Normal;
-                app.open_article(&cat_title);
+        if col >= container_area.x
+            && col < container_area.x + container_area.width
+            && row >= container_area.y
+            && row < container_area.y + container_area.height
+        {
+            if col >= left_area.x
+                && col < left_area.x + left_area.width
+                && row >= left_area.y
+                && row < left_area.y + left_area.height
+            {
+                app.categories_modal.focus_right = false;
+                if let Some(clicked_cat_idx) =
+                    crate::ui::modals::get_category_item_at(app, false, left_area, row)
+                {
+                    app.categories_modal.cursor_idx = clicked_cat_idx;
+                    app.categories_modal.article_cursor_idx = 0;
+                    let pane = app.active_pane();
+                    if let PaneContent::ArticleText { parsed_doc, .. } = &pane.content {
+                        if let Some(cat) = parsed_doc.categories.get(clicked_cat_idx) {
+                            let cat = cat.clone();
+                            app.fetch_category_members_if_needed(&cat);
+                        }
+                    }
+                }
+                return true;
+            }
+
+            if col >= right_area.x
+                && col < right_area.x + right_area.width
+                && row >= right_area.y
+                && row < right_area.y + right_area.height
+            {
+                app.categories_modal.focus_right = true;
+                if let Some(clicked_art_idx) =
+                    crate::ui::modals::get_category_item_at(app, true, right_area, row)
+                {
+                    let pane = app.active_pane();
+                    let target_title = if let PaneContent::ArticleText { parsed_doc, .. } = &pane.content {
+                        let selected_cat_idx = app
+                            .categories_modal
+                            .cursor_idx
+                            .min(parsed_doc.categories.len().saturating_sub(1));
+                        parsed_doc.categories.get(selected_cat_idx).and_then(|cat| {
+                            app.categories_modal.cached_members.get(cat).and_then(|members| {
+                                members.get(clicked_art_idx).cloned()
+                            })
+                        })
+                    } else {
+                        None
+                    };
+
+                    if let Some(title) = target_title {
+                        app.categories_modal.article_cursor_idx = clicked_art_idx;
+                        app.input_mode = InputMode::Normal;
+                        if alt {
+                            app.new_tab();
+                        }
+                        app.open_article(&title);
+                    }
+                }
+                return true;
             }
         } else {
             app.input_mode = InputMode::Normal;

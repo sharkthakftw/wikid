@@ -1,4 +1,5 @@
 pub mod article;
+pub mod category;
 pub mod daily_feed;
 pub mod feed;
 pub mod images;
@@ -87,6 +88,11 @@ pub enum NetworkCommand {
         url: String,
         timeout: u64,
     },
+    FetchCategoryMembers {
+        category: String,
+        limit: usize,
+        timeout: u64,
+    },
 }
 
 pub enum NetworkEvent {
@@ -113,6 +119,10 @@ pub enum NetworkEvent {
     ImageLoaded {
         url: String,
         path: std::path::PathBuf,
+    },
+    CategoryMembersLoaded {
+        category: String,
+        members: Vec<String>,
     },
     Error {
         request_id: u64,
@@ -242,6 +252,17 @@ pub fn run_worker(cmd_rx: Receiver<NetworkCommand>, ev_tx: Sender<NetworkEvent>)
             NetworkCommand::FetchImage { url, timeout } => {
                 if let Ok(path) = images::fetch_and_cache_image(&agent, &url, timeout) {
                     let _ = ev_tx.send(NetworkEvent::ImageLoaded { url, path });
+                }
+            }
+            NetworkCommand::FetchCategoryMembers {
+                category,
+                limit,
+                timeout,
+            } => {
+                if let Ok(members) =
+                    category::fetch_category_members(&agent, &category, limit, timeout)
+                {
+                    let _ = ev_tx.send(NetworkEvent::CategoryMembersLoaded { category, members });
                 }
             }
         });

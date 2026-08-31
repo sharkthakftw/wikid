@@ -66,6 +66,10 @@ pub struct SettingsModalState {
 #[derive(Clone, Debug, Default)]
 pub struct CategoriesModalState {
     pub cursor_idx: usize,
+    pub article_cursor_idx: usize,
+    pub focus_right: bool,
+    pub cached_members: std::collections::HashMap<String, Vec<String>>,
+    pub fetching_categories: std::collections::HashSet<String>,
 }
 
 #[derive(Clone, Debug)]
