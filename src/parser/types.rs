@@ -72,16 +72,18 @@ impl ParsedDocument {
     pub fn validate_invariants(&self) {
         #[cfg(debug_assertions)]
         {
-            let mut last_first_line = 0;
+            let mut last_first = (0, 0);
             for link in &self.links {
-                if let Some(&(first_line, _)) = link.span_indices.first() {
+                if let Some(&(first_line, first_span)) = link.span_indices.first() {
                     debug_assert!(
-                        first_line >= last_first_line,
-                        "ParsedDocument link invariant violated: links must be monotonically sorted by line (found {} < {})",
+                        (first_line, first_span) >= last_first,
+                        "ParsedDocument link invariant violated: links must be monotonically sorted by (line, span) (found ({}, {}) < ({}, {}))",
                         first_line,
-                        last_first_line
+                        first_span,
+                        last_first.0,
+                        last_first.1
                     );
-                    last_first_line = first_line;
+                    last_first = (first_line, first_span);
                 }
                 for &(line_idx, span_idx) in &link.span_indices {
                     if let Some(line) = self.lines.get(line_idx) {

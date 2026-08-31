@@ -84,7 +84,7 @@ pub fn parse_wikipedia_html(
         .collect();
 
     doc.links
-        .sort_by_key(|l| l.span_indices.first().map(|(line, _)| *line).unwrap_or(0));
+        .sort_by_key(|l| l.span_indices.first().copied().unwrap_or((0, 0)));
     doc.validate_invariants();
 
     doc
