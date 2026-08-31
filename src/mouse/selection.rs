@@ -62,9 +62,9 @@ pub fn handle_selection_down(
             let pane = &mut tab.panes[pane_idx];
             if matches!(pane.content, PaneContent::ArticleText { .. }) {
                 if let Some(coord) = get_char_coord_in_article_pane(pane, rect, col, row) {
-                    pane.text_selection = None;
-                    pane.selection_anchor = Some(coord);
-                    pane.is_mouse_selecting = true;
+                    pane.selection.text_selection = None;
+                    pane.selection.selection_anchor = Some(coord);
+                    pane.selection.is_mouse_selecting = true;
                     return true;
                 }
             }
@@ -90,10 +90,10 @@ pub fn handle_selection_drag(
 
     if let Some(&(_, rect)) = rects.iter().find(|(idx, _)| *idx == tab.active_pane_idx) {
         let pane = &mut tab.panes[tab.active_pane_idx];
-        if pane.is_mouse_selecting {
-            if let Some(anchor) = pane.selection_anchor {
+        if pane.selection.is_mouse_selecting {
+            if let Some(anchor) = pane.selection.selection_anchor {
                 if let Some(coord) = get_char_coord_in_article_pane(pane, rect, col, row) {
-                    pane.text_selection = Some(TextSelection {
+                    pane.selection.text_selection = Some(TextSelection {
                         start: anchor,
                         end: coord,
                     });
@@ -108,9 +108,9 @@ pub fn handle_selection_drag(
 pub fn handle_selection_up(app: &mut App) {
     let tab = app.active_tab_mut();
     let pane = &mut tab.panes[tab.active_pane_idx];
-    if pane.is_mouse_selecting {
-        pane.is_mouse_selecting = false;
-        if let Some(selection) = pane.text_selection {
+    if pane.selection.is_mouse_selecting {
+        pane.selection.is_mouse_selecting = false;
+        if let Some(selection) = pane.selection.text_selection {
             let (start, end) = selection.normalized();
             if start != end {
                 if let PaneContent::ArticleText { parsed_doc, .. } = &pane.content {

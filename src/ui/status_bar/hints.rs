@@ -41,19 +41,19 @@ pub fn get_center_spans(
                 .add_modifier(Modifier::BOLD),
         )],
         InputMode::LocalSearch => {
-            let matches_info = if active_pane.local_matches.is_empty() {
+            let matches_info = if active_pane.search.matches.is_empty() {
                 "no matches".to_string()
             } else {
                 format!(
                     "match {}/{}",
-                    active_pane.selected_match_idx.unwrap_or(0) + 1,
-                    active_pane.local_matches.len()
+                    active_pane.search.selected_match_idx.unwrap_or(0) + 1,
+                    active_pane.search.matches.len()
                 )
             };
             vec![Span::styled(
                 format!(
                     "/: {}_ · {} · n next · N prev · esc exit",
-                    active_pane.local_search_query, matches_info
+                    active_pane.search.query, matches_info
                 ),
                 Style::default()
                     .fg(theme::YELLOW)

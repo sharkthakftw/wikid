@@ -103,12 +103,13 @@ pub fn render_article_pane(
         .and_then(|idx| parsed_doc.links.get(idx));
 
     let has_search_matches =
-        if !pane.local_matches.is_empty() && !pane.local_search_query.trim().is_empty() {
+        if !pane.search.matches.is_empty() && !pane.search.query.trim().is_empty() {
             let first_match_idx = pane
-                .local_matches
+                .search
+                .matches
                 .partition_point(|m| m.line_idx < view_start);
-            first_match_idx < pane.local_matches.len()
-                && pane.local_matches[first_match_idx].line_idx < view_end
+            first_match_idx < pane.search.matches.len()
+                && pane.search.matches[first_match_idx].line_idx < view_end
         } else {
             false
         };
@@ -116,16 +117,18 @@ pub fn render_article_pane(
     let mut rendered_lines: Vec<Line<'_>> = Vec::with_capacity(view_len);
 
     let mut link_ptr = first_link_idx;
-    let query_len = pane.local_search_query.len();
+    let query_len = pane.search.query.len();
     let mut match_ptr = if has_search_matches {
-        pane.local_matches
+        pane.search
+            .matches
             .partition_point(|m| m.line_idx < view_start)
     } else {
         0
     };
     let selected_match = pane
+        .search
         .selected_match_idx
-        .and_then(|idx| pane.local_matches.get(idx));
+        .and_then(|idx| pane.search.matches.get(idx));
 
     for (local_idx, orig_line) in parsed_doc.lines[view_start..view_end].iter().enumerate() {
         let line_idx = view_start + local_idx;
@@ -164,9 +167,10 @@ pub fn render_article_pane(
         let needs_selected_link = selected_link
             .is_some_and(|l| l.span_indices.iter().any(|(l_idx, _)| *l_idx == line_idx));
         let needs_search = has_search_matches
-            && match_ptr < pane.local_matches.len()
-            && pane.local_matches[match_ptr].line_idx == line_idx;
+            && match_ptr < pane.search.matches.len()
+            && pane.search.matches[match_ptr].line_idx == line_idx;
         let needs_selection = pane
+            .selection
             .text_selection
             .as_ref()
             .is_some_and(|s| s.contains_line(line_idx));
@@ -236,10 +240,10 @@ pub fn render_article_pane(
 
         if has_search_matches {
             let mut line_matches = Vec::new();
-            while match_ptr < pane.local_matches.len()
-                && pane.local_matches[match_ptr].line_idx == line_idx
+            while match_ptr < pane.search.matches.len()
+                && pane.search.matches[match_ptr].line_idx == line_idx
             {
-                let m = &pane.local_matches[match_ptr];
+                let m = &pane.search.matches[match_ptr];
                 let is_active = selected_match
                     .is_some_and(|sm| sm.line_idx == m.line_idx && sm.char_offset == m.char_offset);
                 line_matches.push((m.char_offset, m.char_offset + query_len, is_active));
@@ -251,7 +255,7 @@ pub fn render_article_pane(
             }
         }
 
-        if let Some(selection) = &pane.text_selection {
+        if let Some(selection) = &pane.selection.text_selection {
             if selection.contains_line(line_idx) {
                 let (start, end) = selection.normalized();
                 let line_len: usize = spans.iter().map(|s| s.content.chars().count()).sum();

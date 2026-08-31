@@ -57,6 +57,20 @@ impl TextSelection {
     }
 }
 
+#[derive(Clone, Debug, Default)]
+pub struct PaneSearchState {
+    pub query: String,
+    pub matches: Vec<LocalMatch>,
+    pub selected_match_idx: Option<usize>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct PaneSelectionState {
+    pub text_selection: Option<TextSelection>,
+    pub is_mouse_selecting: bool,
+    pub selection_anchor: Option<(usize, usize)>,
+}
+
 #[derive(Clone, Debug)]
 pub struct Pane {
     pub id: usize,
@@ -66,12 +80,8 @@ pub struct Pane {
     pub viewport_width: usize,
     pub viewport_height: usize,
     pub selected_link_idx: Option<usize>,
-    pub local_search_query: String,
-    pub local_matches: Vec<LocalMatch>,
-    pub selected_match_idx: Option<usize>,
-    pub text_selection: Option<TextSelection>,
-    pub is_mouse_selecting: bool,
-    pub selection_anchor: Option<(usize, usize)>,
+    pub search: PaneSearchState,
+    pub selection: PaneSelectionState,
     pub is_loading: bool,
     pub loading_title: Option<String>,
     pub show_toc: bool,
@@ -98,12 +108,8 @@ impl Pane {
             viewport_width: 0,
             viewport_height: 0,
             selected_link_idx: None,
-            local_search_query: String::new(),
-            local_matches: Vec::new(),
-            selected_match_idx: None,
-            text_selection: None,
-            is_mouse_selecting: false,
-            selection_anchor: None,
+            search: PaneSearchState::default(),
+            selection: PaneSelectionState::default(),
             is_loading: false,
             loading_title: None,
             show_toc: false,
@@ -124,9 +130,7 @@ impl Pane {
         self.is_loading = true;
         self.loading_title = Some(title.to_string());
         self.selected_link_idx = None;
-        self.text_selection = None;
-        self.is_mouse_selecting = false;
-        self.selection_anchor = None;
+        self.selection = PaneSelectionState::default();
         self.intra_jump_back.clear();
         self.intra_jump_forward.clear();
         self.scroll_offset = 0;
@@ -173,10 +177,10 @@ impl Pane {
     }
 
     pub fn recompute_local_matches(&mut self) {
-        self.local_matches.clear();
-        let query = self.local_search_query.to_lowercase();
+        self.search.matches.clear();
+        let query = self.search.query.to_lowercase();
         if query.trim().is_empty() {
-            self.selected_match_idx = None;
+            self.search.selected_match_idx = None;
             return;
         }
 
@@ -194,7 +198,7 @@ impl Pane {
                             }
                             current_offset += span_len;
                         }
-                        self.local_matches.push(LocalMatch {
+                        self.search.matches.push(LocalMatch {
                             line_idx,
                             span_idx: start_span_idx,
                             char_offset: match_pos,
@@ -202,14 +206,14 @@ impl Pane {
                     }
                 }
             }
-            if !self.local_matches.is_empty() {
-                if let Some(sel) = self.selected_match_idx {
-                    self.selected_match_idx = Some(sel.min(self.local_matches.len() - 1));
+            if !self.search.matches.is_empty() {
+                if let Some(sel) = self.search.selected_match_idx {
+                    self.search.selected_match_idx = Some(sel.min(self.search.matches.len() - 1));
                 } else {
-                    self.selected_match_idx = Some(0);
+                    self.search.selected_match_idx = Some(0);
                 }
             } else {
-                self.selected_match_idx = None;
+                self.search.selected_match_idx = None;
             }
         }
     }
