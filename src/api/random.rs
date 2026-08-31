@@ -23,20 +23,15 @@ pub fn fetch_random_article(
     cache_lifetime: u64,
 ) -> Result<(String, String), super::ApiError> {
     let url = "https://en.wikipedia.org/w/api.php";
-    let res = agent
+    let req = agent
         .get(url)
-        .timeout(std::time::Duration::from_secs(timeout_secs.max(1)))
         .query("action", "query")
         .query("list", "random")
         .query("rnnamespace", "0")
         .query("rnlimit", "1")
-        .query("format", "json")
-        .call()
-        .map_err(|e| super::ApiError::Network(e.to_string()))?;
+        .query("format", "json");
 
-    let rand_resp: WikiRandomResponse = res
-        .into_json()
-        .map_err(|e| super::ApiError::Parse(e.to_string()))?;
+    let rand_resp: WikiRandomResponse = super::send_request_json(req, timeout_secs)?;
 
     let title = rand_resp
         .query

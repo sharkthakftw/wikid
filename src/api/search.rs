@@ -33,9 +33,8 @@ pub fn search_wikipedia(
 ) -> Result<Vec<SearchResultItem>, super::ApiError> {
     let url = "https://en.wikipedia.org/w/api.php";
     let limit_str = limit.clamp(1, 50).to_string();
-    let res = agent
+    let req = agent
         .get(url)
-        .timeout(std::time::Duration::from_secs(timeout_secs.max(1)))
         .query("action", "query")
         .query("generator", "search")
         .query("gsrsearch", query)
@@ -45,13 +44,9 @@ pub fn search_wikipedia(
             "clcategories",
             "Category:Spoken_Wikipedia_articles|Category:Spoken_articles",
         )
-        .query("format", "json")
-        .call()
-        .map_err(|e| super::ApiError::Network(e.to_string()))?;
+        .query("format", "json");
 
-    let search_resp: WikiGenSearchResponse = res
-        .into_json()
-        .map_err(|e| super::ApiError::Parse(e.to_string()))?;
+    let search_resp: WikiGenSearchResponse = super::send_request_json(req, timeout_secs)?;
 
     let mut items = Vec::new();
     if let Some(q) = search_resp.query {

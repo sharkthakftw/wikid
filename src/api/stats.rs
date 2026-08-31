@@ -46,13 +46,7 @@ pub fn fetch_wiki_statistics(
     timeout_secs: u64,
 ) -> Result<WikiStatistics, String> {
     let url = "https://en.wikipedia.org/w/api.php?action=query&meta=siteinfo&siprop=statistics&format=json";
-    let resp = agent
-        .get(url)
-        .timeout(std::time::Duration::from_secs(timeout_secs.max(1)))
-        .call()
-        .map_err(|e| format!("Network error: {}", e))?;
-    let data: SiteInfoResponse = resp
-        .into_json()
-        .map_err(|e| format!("JSON decode error: {}", e))?;
+    let data: SiteInfoResponse =
+        super::send_request_json(agent.get(url), timeout_secs).map_err(|e| e.to_string())?;
     Ok(data.query.statistics)
 }
