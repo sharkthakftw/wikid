@@ -38,8 +38,12 @@ impl App {
 
                 if is_current {
                     self.record_recent_article(&title);
+                    let width = self
+                        .find_pane(pane_id)
+                        .map(|p| if p.viewport_width > 0 { p.viewport_width } else { 80 })
+                        .unwrap_or(80);
                     let render_opts = crate::app::pane::ArticleRenderOptions {
-                        width: 80,
+                        width,
                         show_footnotes: self.config.reader.show_footnotes,
                         show_external_links: self.config.reader.show_external_links,
                         heading_marker: self.config.reader.heading_marker,
