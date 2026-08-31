@@ -273,36 +273,23 @@ pub fn render_article_pane(
 
                 if let Some(path) = img_path {
                     if resolved_proto.is_kitty() {
-                        let (screen_y, visible_rows, top_clipped, bot_clipped) =
-                            if img_top < view_start {
-                                let top_clipped = view_start - img_top;
-                                let rows = img.height_lines.saturating_sub(top_clipped);
-                                let visible = (rows as u16).min(inner_rect.height);
-                                let bot_clipped = rows.saturating_sub(visible as usize);
-                                (inner_rect.y, visible, top_clipped, bot_clipped)
-                            } else {
-                                let rel_line = img_top - view_start;
-                                let max_rows = inner_rect.height.saturating_sub(rel_line as u16);
-                                let visible = (img.height_lines as u16).min(max_rows);
-                                let bot_clipped = img.height_lines.saturating_sub(visible as usize);
-                                (inner_rect.y + (rel_line as u16), visible, 0, bot_clipped)
-                            };
-
-                        let visible_cols = (img.width_cols as u16).min(inner_rect.width);
-                        let left_pad = inner_rect.width.saturating_sub(img.width_cols as u16) / 2;
-                        let screen_x = inner_rect.x + left_pad;
-
-                        if visible_rows > 0 && visible_cols > 0 {
+                        if let Some(bounds) = calculate_visible_image_bounds(
+                            img.line_idx,
+                            img.height_lines,
+                            img.width_cols,
+                            view_start,
+                            inner_rect,
+                        ) {
                             app.graphics
                                 .pending_image_renders
                                 .push(crate::app::ImageRenderTask {
                                     path,
-                                    screen_x,
-                                    screen_y,
-                                    cols: visible_cols,
-                                    rows: visible_rows,
-                                    crop_top_lines: top_clipped as u16,
-                                    crop_bot_lines: bot_clipped as u16,
+                                    screen_x: bounds.screen_x,
+                                    screen_y: bounds.screen_y,
+                                    cols: bounds.visible_cols,
+                                    rows: bounds.visible_rows,
+                                    crop_top_lines: bounds.top_clipped,
+                                    crop_bot_lines: bounds.bot_clipped,
                                 });
                         }
                     }
@@ -500,4 +487,52 @@ pub fn get_link_at_coord(
         .links
         .iter()
         .position(|link| link.span_indices.contains(&(line_idx, span_idx)))
+}
+
+pub struct VisibleImageBounds {
+    pub screen_x: u16,
+    pub screen_y: u16,
+    pub visible_cols: u16,
+    pub visible_rows: u16,
+    pub top_clipped: u16,
+    pub bot_clipped: u16,
+}
+
+pub fn calculate_visible_image_bounds(
+    img_top: usize,
+    img_height: usize,
+    img_width: usize,
+    view_start: usize,
+    inner_rect: Rect,
+) -> Option<VisibleImageBounds> {
+    let (screen_y, visible_rows, top_clipped, bot_clipped) = if img_top < view_start {
+        let top_clipped = view_start - img_top;
+        let rows = img_height.saturating_sub(top_clipped);
+        let visible = (rows as u16).min(inner_rect.height);
+        let bot_clipped = rows.saturating_sub(visible as usize);
+        (inner_rect.y, visible, top_clipped as u16, bot_clipped as u16)
+    } else {
+        let rel_line = img_top - view_start;
+        let max_rows = inner_rect.height.saturating_sub(rel_line as u16);
+        let visible = (img_height as u16).min(max_rows);
+        let bot_clipped = img_height.saturating_sub(visible as usize);
+        (inner_rect.y + (rel_line as u16), visible, 0, bot_clipped as u16)
+    };
+
+    let visible_cols = (img_width as u16).min(inner_rect.width);
+    let left_pad = inner_rect.width.saturating_sub(img_width as u16) / 2;
+    let screen_x = inner_rect.x + left_pad;
+
+    if visible_rows > 0 && visible_cols > 0 {
+        Some(VisibleImageBounds {
+            screen_x,
+            screen_y,
+            visible_cols,
+            visible_rows,
+            top_clipped,
+            bot_clipped,
+        })
+    } else {
+        None
+    }
 }
