@@ -535,13 +535,23 @@ pub fn calculate_visible_image_bounds(
         let rows = img_height.saturating_sub(top_clipped);
         let visible = (rows as u16).min(inner_rect.height);
         let bot_clipped = rows.saturating_sub(visible as usize);
-        (inner_rect.y, visible, top_clipped as u16, bot_clipped as u16)
+        (
+            inner_rect.y,
+            visible,
+            top_clipped as u16,
+            bot_clipped as u16,
+        )
     } else {
         let rel_line = img_top - view_start;
         let max_rows = inner_rect.height.saturating_sub(rel_line as u16);
         let visible = (img_height as u16).min(max_rows);
         let bot_clipped = img_height.saturating_sub(visible as usize);
-        (inner_rect.y + (rel_line as u16), visible, 0, bot_clipped as u16)
+        (
+            inner_rect.y + (rel_line as u16),
+            visible,
+            0,
+            bot_clipped as u16,
+        )
     };
 
     let visible_cols = (img_width as u16).min(inner_rect.width);

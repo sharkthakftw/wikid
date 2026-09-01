@@ -49,8 +49,7 @@ pub(crate) fn send_request_json<T: serde::de::DeserializeOwned>(
         .timeout(std::time::Duration::from_secs(timeout_secs.max(1)))
         .call()
         .map_err(|e| ApiError::Network(e.to_string()))?;
-    resp.into_json()
-        .map_err(|e| ApiError::Parse(e.to_string()))
+    resp.into_json().map_err(|e| ApiError::Parse(e.to_string()))
 }
 
 #[derive(Debug, Clone)]
