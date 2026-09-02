@@ -94,6 +94,18 @@ pub enum ImageProtocol {
     Off,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum HalfblockFilter {
+    Nearest,
+    Triangle,
+    #[serde(rename = "catmullrom")]
+    #[default]
+    Catmullrom,
+    Gaussian,
+    Lanczos3,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct ReaderConfig {
@@ -106,6 +118,7 @@ pub struct ReaderConfig {
     pub code_line_numbers: bool,
     pub show_images: bool,
     pub image_protocol: ImageProtocol,
+    pub halfblock_filter: HalfblockFilter,
     pub max_image_height: usize,
 }
 
@@ -121,6 +134,7 @@ impl Default for ReaderConfig {
             code_line_numbers: true,
             show_images: true,
             image_protocol: ImageProtocol::Auto,
+            halfblock_filter: HalfblockFilter::Catmullrom,
             max_image_height: 25,
         }
     }

@@ -56,13 +56,21 @@ pub fn render_halfblock_image_from_bytes(
     image_bytes: &[u8],
     target_cols: usize,
     target_rows: usize,
+    filter: crate::config::HalfblockFilter,
 ) -> Option<Vec<Line<'static>>> {
     let img = image::load_from_memory(image_bytes).ok()?;
     let target_px_height = target_rows * 2;
+    let filter_type = match filter {
+        crate::config::HalfblockFilter::Nearest => image::imageops::FilterType::Nearest,
+        crate::config::HalfblockFilter::Triangle => image::imageops::FilterType::Triangle,
+        crate::config::HalfblockFilter::Catmullrom => image::imageops::FilterType::CatmullRom,
+        crate::config::HalfblockFilter::Gaussian => image::imageops::FilterType::Gaussian,
+        crate::config::HalfblockFilter::Lanczos3 => image::imageops::FilterType::Lanczos3,
+    };
     let resized = img.resize_exact(
         target_cols as u32,
         target_px_height as u32,
-        image::imageops::FilterType::CatmullRom,
+        filter_type,
     );
     let rgba = resized.to_rgba8();
     let pixels: Vec<RgbPixel> = rgba

@@ -60,7 +60,10 @@ pub fn render_article_pane(
                 if let Ok(bytes) = std::fs::read(&path) {
                     if let Some(hb_lines) =
                         crate::graphics::halfblocks::render_halfblock_image_from_bytes(
-                            &bytes, cols, rows,
+                            &bytes,
+                            cols,
+                            rows,
+                            app.config.reader.halfblock_filter,
                         )
                     {
                         if pane.halfblock_cache.len() >= 50 {

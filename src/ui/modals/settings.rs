@@ -146,6 +146,20 @@ pub fn render_settings_modal(f: &mut Frame, app: &App, size: Rect) {
                     Style::default().fg(theme::TEAL).bold(),
                 )
             }
+            SettingItem::HalfblockFilter => {
+                let val = app.config.reader.halfblock_filter;
+                let text = match val {
+                    crate::config::HalfblockFilter::Nearest => "nearest",
+                    crate::config::HalfblockFilter::Triangle => "triangle",
+                    crate::config::HalfblockFilter::Catmullrom => "catmullrom",
+                    crate::config::HalfblockFilter::Gaussian => "gaussian",
+                    crate::config::HalfblockFilter::Lanczos3 => "lanczos3",
+                };
+                Span::styled(
+                    format!("◄  {:>10}  ►", text),
+                    Style::default().fg(theme::TEAL).bold(),
+                )
+            }
             SettingItem::SearchLimit => {
                 let val = app.config.search.limit;
                 Span::styled(

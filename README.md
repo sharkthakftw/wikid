@@ -131,6 +131,7 @@ heading_marker = true # enable/disable colored heading marker in section heading
 code_line_numbers = true # enable/disable line numbers in code blocks
 show_images = true # enable/disable inline article images
 image_protocol = "auto" # graphics protocol: "auto", "kitty", "halfblocks", "off"
+halfblock_filter = "catmullrom" # resampling filter: "nearest", "triangle", "catmullrom", "gaussian", "lanczos3"
 max_image_height = 25 # maximum terminal rows allocated per image
 
 [ui]

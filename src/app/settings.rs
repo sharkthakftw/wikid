@@ -20,6 +20,7 @@ pub enum SettingItem {
     CodeLineNumbers,
     ShowImages,
     ImageProtocol,
+    HalfblockFilter,
     SearchLimit,
     NetworkTimeout,
     OfflineCache,
@@ -47,6 +48,7 @@ impl SettingItem {
         SettingItem::CodeLineNumbers,
         SettingItem::ShowImages,
         SettingItem::ImageProtocol,
+        SettingItem::HalfblockFilter,
         SettingItem::SearchLimit,
         SettingItem::NetworkTimeout,
         SettingItem::OfflineCache,
@@ -73,7 +75,8 @@ impl SettingItem {
             | SettingItem::TocSectionNumbers
             | SettingItem::CodeLineNumbers
             | SettingItem::ShowImages
-            | SettingItem::ImageProtocol => "reader",
+            | SettingItem::ImageProtocol
+            | SettingItem::HalfblockFilter => "reader",
             SettingItem::SearchLimit => "search",
             SettingItem::NetworkTimeout
             | SettingItem::OfflineCache
@@ -101,6 +104,7 @@ impl SettingItem {
             SettingItem::CodeLineNumbers => "code line numbers",
             SettingItem::ShowImages => "render images",
             SettingItem::ImageProtocol => "graphics protocol",
+            SettingItem::HalfblockFilter => "halfblock filter",
             SettingItem::SearchLimit => "search results limit",
             SettingItem::NetworkTimeout => "request timeout",
             SettingItem::OfflineCache => "offline article cache",
@@ -134,6 +138,9 @@ impl SettingItem {
             SettingItem::ShowImages => "render inline article images and diagrams",
             SettingItem::ImageProtocol => {
                 "graphics rendering protocol (auto, kitty, halfblocks, off)"
+            }
+            SettingItem::HalfblockFilter => {
+                "halfblock image resampling filter (nearest, triangle, catmullrom, gaussian, lanczos3)"
             }
             SettingItem::SearchLimit => "maximum number of search results to fetch (5-50)",
             SettingItem::NetworkTimeout => "network request timeout in seconds (2-60s)",
@@ -269,6 +276,50 @@ impl App {
                         }
                     };
                 }
+                SettingItem::HalfblockFilter => {
+                    self.config.reader.halfblock_filter = match self.config.reader.halfblock_filter {
+                        crate::config::HalfblockFilter::Nearest => {
+                            if delta < 0 {
+                                crate::config::HalfblockFilter::Lanczos3
+                            } else {
+                                crate::config::HalfblockFilter::Triangle
+                            }
+                        }
+                        crate::config::HalfblockFilter::Triangle => {
+                            if delta < 0 {
+                                crate::config::HalfblockFilter::Nearest
+                            } else {
+                                crate::config::HalfblockFilter::Catmullrom
+                            }
+                        }
+                        crate::config::HalfblockFilter::Catmullrom => {
+                            if delta < 0 {
+                                crate::config::HalfblockFilter::Triangle
+                            } else {
+                                crate::config::HalfblockFilter::Gaussian
+                            }
+                        }
+                        crate::config::HalfblockFilter::Gaussian => {
+                            if delta < 0 {
+                                crate::config::HalfblockFilter::Catmullrom
+                            } else {
+                                crate::config::HalfblockFilter::Lanczos3
+                            }
+                        }
+                        crate::config::HalfblockFilter::Lanczos3 => {
+                            if delta < 0 {
+                                crate::config::HalfblockFilter::Gaussian
+                            } else {
+                                crate::config::HalfblockFilter::Nearest
+                            }
+                        }
+                    };
+                    for tab in &mut self.tabs {
+                        for pane in &mut tab.panes {
+                            pane.halfblock_cache.clear();
+                        }
+                    }
+                }
                 SettingItem::SearchLimit => {
                     let cur = self.config.search.limit as i32;
                     let step = 5;
@@ -396,6 +447,14 @@ impl App {
                 }
                 SettingItem::ImageProtocol => {
                     self.config.reader.image_protocol = default_config.reader.image_protocol;
+                }
+                SettingItem::HalfblockFilter => {
+                    self.config.reader.halfblock_filter = default_config.reader.halfblock_filter;
+                    for tab in &mut self.tabs {
+                        for pane in &mut tab.panes {
+                            pane.halfblock_cache.clear();
+                        }
+                    }
                 }
                 SettingItem::SearchLimit => {
                     self.config.search.limit = default_config.search.limit;
