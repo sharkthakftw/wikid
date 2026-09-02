@@ -69,6 +69,30 @@ pub fn handle_normal_mode(app: &mut App, key: KeyEvent, term_width: u16, term_he
             KeyCode::Char('c') | KeyCode::Char('x') | KeyCode::Char('q') => {
                 app.close_active_pane();
             }
+            KeyCode::Char('h') => {
+                app.navigate_panes('h', term_width, term_height);
+            }
+            KeyCode::Char('j') => {
+                app.navigate_panes('j', term_width, term_height);
+            }
+            KeyCode::Char('k') => {
+                app.navigate_panes('k', term_width, term_height);
+            }
+            KeyCode::Char('l') => {
+                app.navigate_panes('l', term_width, term_height);
+            }
+            KeyCode::Char('H') => {
+                app.move_pane('h', term_width, term_height);
+            }
+            KeyCode::Char('J') => {
+                app.move_pane('j', term_width, term_height);
+            }
+            KeyCode::Char('K') => {
+                app.move_pane('k', term_width, term_height);
+            }
+            KeyCode::Char('L') => {
+                app.move_pane('l', term_width, term_height);
+            }
             _ => {}
         }
     } else {
@@ -258,10 +282,10 @@ pub fn handle_normal_mode(app: &mut App, key: KeyEvent, term_width: u16, term_he
                     }
                 }
             }
-            KeyCode::Char('H') => {
+            KeyCode::Char('H') if !key.modifiers.contains(KeyModifiers::CONTROL) => {
                 app.history_back();
             }
-            KeyCode::Char('L') => {
+            KeyCode::Char('L') if !key.modifiers.contains(KeyModifiers::CONTROL) => {
                 app.history_forward();
             }
             KeyCode::Char('h')
@@ -304,6 +328,34 @@ pub fn handle_normal_mode(app: &mut App, key: KeyEvent, term_width: u16, term_he
             }
             KeyCode::Char('u') if key.modifiers.is_empty() => {
                 app.reopen_last_closed();
+            }
+            KeyCode::Char('H' | 'h')
+                if key.modifiers.contains(KeyModifiers::CONTROL)
+                    && (key.modifiers.contains(KeyModifiers::SHIFT)
+                        || matches!(key.code, KeyCode::Char('H'))) =>
+            {
+                app.move_pane('h', term_width, term_height);
+            }
+            KeyCode::Char('L' | 'l')
+                if key.modifiers.contains(KeyModifiers::CONTROL)
+                    && (key.modifiers.contains(KeyModifiers::SHIFT)
+                        || matches!(key.code, KeyCode::Char('L'))) =>
+            {
+                app.move_pane('l', term_width, term_height);
+            }
+            KeyCode::Char('J' | 'j')
+                if key.modifiers.contains(KeyModifiers::CONTROL)
+                    && (key.modifiers.contains(KeyModifiers::SHIFT)
+                        || matches!(key.code, KeyCode::Char('J'))) =>
+            {
+                app.move_pane('j', term_width, term_height);
+            }
+            KeyCode::Char('K' | 'k')
+                if key.modifiers.contains(KeyModifiers::CONTROL)
+                    && (key.modifiers.contains(KeyModifiers::SHIFT)
+                        || matches!(key.code, KeyCode::Char('K'))) =>
+            {
+                app.move_pane('k', term_width, term_height);
             }
             KeyCode::Char('h') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 app.navigate_panes('h', term_width, term_height);

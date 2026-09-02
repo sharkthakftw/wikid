@@ -169,6 +169,22 @@ impl LayoutNode {
             }
         }
     }
+
+    pub fn swap_panes(&mut self, a: usize, b: usize) {
+        match self {
+            LayoutNode::Leaf(idx) => {
+                if *idx == a {
+                    *idx = b;
+                } else if *idx == b {
+                    *idx = a;
+                }
+            }
+            LayoutNode::Split { left, right, .. } => {
+                left.swap_panes(a, b);
+                right.swap_panes(a, b);
+            }
+        }
+    }
 }
 
 pub fn find_pane_in_direction(

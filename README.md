@@ -93,7 +93,8 @@ make install
 | **copy article URL** | `Y` | copy current article URL to clipboard |
 | **split pane** | `ctrl-w` `s`/`v` | split active pane horizontally (`s`) or vertically (`v`) |
 | **resize split** | `ctrl-=` / `ctrl--` | expand (`ctrl-=`) or shrink (`ctrl--`) active split dimensions |
-| **navigate panes** | `ctrl-h/j/k/l` | switch focus between split panes |
+| **navigate panes** | `ctrl-h/j/k/l`, `ctrl-w` `h/j/k/l` | switch focus between split panes |
+| **move panes** | `ctrl-shift-h/j/k/l`, `ctrl-w` `H/J/K/L` | move active pane position in split tree |
 | **close pane** | `x` | close active pane |
 | **reopen closed** | `u` | reopen last closed tab or split pane |
 | **new tab** | `alt-t` | create a new empty tab |

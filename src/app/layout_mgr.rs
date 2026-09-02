@@ -196,6 +196,20 @@ impl App {
         }
     }
 
+    pub fn move_pane(&mut self, dir: char, term_width: u16, term_height: u16) {
+        use crate::layout::find_pane_in_direction;
+        use ratatui::layout::Rect;
+
+        let main_rect = Rect::new(0, 1, term_width, term_height.saturating_sub(2));
+        let tab = self.active_tab_mut();
+        let rects = tab.layout_root.compute_rects(main_rect);
+
+        if let Some(target_idx) = find_pane_in_direction(&rects, tab.active_pane_idx, dir) {
+            let active_idx = tab.active_pane_idx;
+            tab.layout_root.swap_panes(active_idx, target_idx);
+        }
+    }
+
     pub fn resize_active_split(&mut self, delta: i16) {
         let tab = self.active_tab_mut();
         let target_idx = tab.active_pane_idx;
