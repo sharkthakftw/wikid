@@ -446,22 +446,49 @@ fn build_selection_highlighted_spans<'a>(
             let rel_start = sel_start.saturating_sub(span_start).min(span_len);
             let rel_end = sel_end.saturating_sub(span_start).min(span_len);
 
-            let chars: Vec<char> = span.content.chars().collect();
+            let mut byte_start = span.content.len();
+            let mut byte_end = span.content.len();
+            for (char_idx, (b_idx, _)) in span.content.char_indices().enumerate() {
+                if char_idx == rel_start {
+                    byte_start = b_idx;
+                }
+                if char_idx == rel_end {
+                    byte_end = b_idx;
+                    break;
+                }
+            }
 
             if rel_start > 0 {
-                let prefix: String = chars[0..rel_start].iter().collect();
-                new_spans.push(Span::styled(prefix, span.style));
+                let prefix_span = match &span.content {
+                    std::borrow::Cow::Borrowed(s) => Span::styled(&s[..byte_start], span.style),
+                    std::borrow::Cow::Owned(s) => {
+                        Span::styled(s[..byte_start].to_string(), span.style)
+                    }
+                };
+                new_spans.push(prefix_span);
             }
 
             if rel_end > rel_start {
-                let selected: String = chars[rel_start..rel_end].iter().collect();
                 let sel_style = Style::default().bg(theme::PINK).fg(theme::BG).bold();
-                new_spans.push(Span::styled(selected, sel_style));
+                let sel_span = match &span.content {
+                    std::borrow::Cow::Borrowed(s) => {
+                        Span::styled(&s[byte_start..byte_end], sel_style)
+                    }
+                    std::borrow::Cow::Owned(s) => {
+                        Span::styled(s[byte_start..byte_end].to_string(), sel_style)
+                    }
+                };
+                new_spans.push(sel_span);
             }
 
             if rel_end < span_len {
-                let suffix: String = chars[rel_end..].iter().collect();
-                new_spans.push(Span::styled(suffix, span.style));
+                let suffix_span = match &span.content {
+                    std::borrow::Cow::Borrowed(s) => Span::styled(&s[byte_end..], span.style),
+                    std::borrow::Cow::Owned(s) => {
+                        Span::styled(s[byte_end..].to_string(), span.style)
+                    }
+                };
+                new_spans.push(suffix_span);
             }
         }
 
