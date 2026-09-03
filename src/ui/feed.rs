@@ -101,10 +101,13 @@ pub fn render_feed_view(f: &mut Frame, feed: &FeedState, area: Rect, rounded: bo
 
     if let Some(short_desc) = &item.short_description {
         if !short_desc.is_empty() {
-            card_lines.push(Line::from(vec![
-                Span::raw("   "),
-                Span::styled(short_desc, Style::default().fg(theme::GREY).italic()),
-            ]));
+            card_lines.push(
+                Line::from(Span::styled(
+                    short_desc.clone(),
+                    Style::default().fg(theme::GREY).italic(),
+                ))
+                .alignment(Alignment::Center),
+            );
             card_lines.push(Line::from(""));
         }
     }
@@ -126,11 +129,46 @@ pub fn render_feed_view(f: &mut Frame, feed: &FeedState, area: Rect, rounded: bo
 
     card_lines.push(Line::from(""));
     if !item.categories.is_empty() {
-        let tags: Vec<String> = item.categories.iter().map(|c| format!("#{}", c)).collect();
-        card_lines.push(Line::from(vec![
-            Span::styled("   categories: ", Style::default().fg(theme::GREY)),
-            Span::styled(tags.join(" "), Style::default().fg(theme::VIOLET)),
-        ]));
+        let max_display = 3;
+        let mut spans = vec![Span::styled("   categories: ", Style::default().fg(theme::GREY))];
+
+        let mut sorted_indices: Vec<usize> = (0..item.categories.len()).collect();
+        sorted_indices.sort_by(|&a, &b| {
+            let score_b = feed
+                .profile
+                .score_for_categories(std::slice::from_ref(&item.categories[b]));
+            let score_a = feed
+                .profile
+                .score_for_categories(std::slice::from_ref(&item.categories[a]));
+            score_b.cmp(&score_a)
+        });
+
+        for (i, &idx) in sorted_indices.iter().take(max_display).enumerate() {
+            if i > 0 {
+                spans.push(Span::styled(" · ", Style::default().fg(theme::GREY)));
+            }
+            let cat = &item.categories[idx];
+            let is_matched = feed
+                .profile
+                .score_for_categories(std::slice::from_ref(cat))
+                > 0;
+            let cat_color = if is_matched {
+                theme::VIOLET
+            } else {
+                theme::BEIGE
+            };
+            spans.push(Span::styled(cat.as_str(), Style::default().fg(cat_color)));
+        }
+
+        if item.categories.len() > max_display {
+            let remaining = item.categories.len() - max_display;
+            spans.push(Span::styled(
+                format!(" (+{} more)", remaining),
+                Style::default().fg(theme::GREY).italic(),
+            ));
+        }
+
+        card_lines.push(Line::from(spans));
     }
 
     let card_p = Paragraph::new(card_lines)
