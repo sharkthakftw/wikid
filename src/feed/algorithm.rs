@@ -110,7 +110,10 @@ pub fn rank_batch(
 ) -> Vec<FeedItem> {
     candidates.retain(|item| {
         let title_lower = item.title.to_lowercase();
-        !profile.seen_articles.contains(&item.title) && !read_articles.contains(&title_lower)
+        !title_lower.starts_with("portal:")
+            && !title_lower.starts_with("category:")
+            && !profile.seen_articles.contains(&item.title)
+            && !read_articles.contains(&title_lower)
     });
     let mut ranked = Vec::with_capacity(candidates.len());
     while !candidates.is_empty() {

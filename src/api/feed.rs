@@ -29,6 +29,15 @@ fn parse_feed_items(query: WikiFeedQuery) -> Vec<FeedItem> {
     if let Some(pages) = query.pages {
         for (_, page) in pages {
             if let Some(title) = page.title {
+                let lower_title = title.to_lowercase();
+                if lower_title.starts_with("portal:")
+                    || lower_title.starts_with("category:")
+                    || lower_title.starts_with("wikipedia:")
+                    || lower_title.starts_with("template:")
+                    || lower_title.starts_with("help:")
+                {
+                    continue;
+                }
                 let short_description = page.description.filter(|d| !d.trim().is_empty());
                 let snippet = page.extract.unwrap_or_default().trim().to_string();
                 let categories: Vec<String> = page
@@ -97,6 +106,7 @@ fn fetch_category_items(
         .query("generator", "categorymembers")
         .query("gcmtitle", &category_title)
         .query("gcmtype", "page")
+        .query("gcmnamespace", "0")
         .query("gcmlimit", "8");
     query_feed_items(req, timeout_secs)
 }
