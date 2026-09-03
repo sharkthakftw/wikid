@@ -96,7 +96,10 @@ pub fn handle_daily_feed_mode(app: &mut App, key: KeyEvent) {
                 let target_line = crate::ui::modals::get_modal_item_line_offset(
                     app,
                     kind,
-                    app.daily_feed_modal.as_ref().map(|m| m.cursor_idx).unwrap_or(0),
+                    app.daily_feed_modal
+                        .as_ref()
+                        .map(|m| m.cursor_idx)
+                        .unwrap_or(0),
                 );
                 if let Some(modal) = &mut app.daily_feed_modal {
                     if target_line >= modal.scroll + 12 {
@@ -117,7 +120,10 @@ pub fn handle_daily_feed_mode(app: &mut App, key: KeyEvent) {
                 let target_line = crate::ui::modals::get_modal_item_line_offset(
                     app,
                     kind,
-                    app.daily_feed_modal.as_ref().map(|m| m.cursor_idx).unwrap_or(0),
+                    app.daily_feed_modal
+                        .as_ref()
+                        .map(|m| m.cursor_idx)
+                        .unwrap_or(0),
                 );
                 if let Some(modal) = &mut app.daily_feed_modal {
                     if target_line < modal.scroll {
@@ -143,7 +149,10 @@ pub fn handle_daily_feed_mode(app: &mut App, key: KeyEvent) {
                 let target_line = crate::ui::modals::get_modal_item_line_offset(
                     app,
                     kind,
-                    app.daily_feed_modal.as_ref().map(|m| m.cursor_idx).unwrap_or(0),
+                    app.daily_feed_modal
+                        .as_ref()
+                        .map(|m| m.cursor_idx)
+                        .unwrap_or(0),
                 );
                 if let Some(modal) = &mut app.daily_feed_modal {
                     modal.scroll = target_line.saturating_sub(6);

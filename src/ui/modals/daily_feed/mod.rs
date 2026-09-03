@@ -267,7 +267,9 @@ pub fn get_daily_feed_item_at(
     match modal.kind {
         DailyFeedKind::MostRead => {
             let entries = get_feed_entries(app, DailyFeedKind::MostRead);
-            let scroll = modal.scroll.min(entries.len().saturating_sub(inner_h as usize));
+            let scroll = modal
+                .scroll
+                .min(entries.len().saturating_sub(inner_h as usize));
             let clicked_idx = (row - inner_y) as usize + scroll;
             entries
                 .get(clicked_idx)
@@ -310,7 +312,9 @@ pub fn get_daily_feed_item_at(
                 None
             };
 
-            let scroll = modal.scroll.min(line_count.saturating_sub(inner_h as usize));
+            let scroll = modal
+                .scroll
+                .min(line_count.saturating_sub(inner_h as usize));
             let clicked_line = (row - inner_y) as usize + scroll;
 
             if has_ongoing_or_deaths

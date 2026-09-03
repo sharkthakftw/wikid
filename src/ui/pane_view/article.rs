@@ -44,9 +44,12 @@ pub fn render_article_pane(
                     if !pane.halfblock_cache.contains_key(&key)
                         && pane.pending_image_decodes.insert(key)
                     {
-                        if let Some(path) = pane.loaded_images.get(&img.url).cloned().or_else(|| {
-                            crate::graphics::cache::get_cached_image_path(&img.url)
-                        }) {
+                        if let Some(path) = pane
+                            .loaded_images
+                            .get(&img.url)
+                            .cloned()
+                            .or_else(|| crate::graphics::cache::get_cached_image_path(&img.url))
+                        {
                             to_request.push((img.url.clone(), path, cols, rows));
                         }
                     }

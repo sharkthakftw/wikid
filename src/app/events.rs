@@ -175,11 +175,13 @@ impl App {
             } => {
                 for tab in &mut self.tabs {
                     for pane in &mut tab.panes {
-                        pane.pending_image_decodes.remove(&(url.clone(), cols, rows));
+                        pane.pending_image_decodes
+                            .remove(&(url.clone(), cols, rows));
                         if pane.halfblock_cache.len() >= 50 {
                             pane.halfblock_cache.clear();
                         }
-                        pane.halfblock_cache.insert((url.clone(), cols, rows), lines.clone());
+                        pane.halfblock_cache
+                            .insert((url.clone(), cols, rows), lines.clone());
                     }
                 }
             }

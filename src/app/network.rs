@@ -91,6 +91,7 @@ impl App {
     }
 
     pub fn send_predecode_kitty_image(&self, path: std::path::PathBuf) {
-        self.network.send(NetworkCommand::PredecodeKittyImage { path });
+        self.network
+            .send(NetworkCommand::PredecodeKittyImage { path });
     }
 }
