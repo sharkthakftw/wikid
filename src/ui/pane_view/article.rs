@@ -120,7 +120,7 @@ pub fn render_article_pane(
     let mut rendered_lines: Vec<Line<'_>> = Vec::with_capacity(view_len);
 
     let mut link_ptr = first_link_idx;
-    let query_len = pane.search.query.len();
+    let query_len = pane.search.query.to_lowercase().len();
     let mut match_ptr = if has_search_matches {
         pane.search
             .matches
@@ -136,7 +136,6 @@ pub fn render_article_pane(
     for (local_idx, orig_line) in parsed_doc.lines[view_start..view_end].iter().enumerate() {
         let line_idx = view_start + local_idx;
 
-        let resolved_proto = crate::graphics::resolve_protocol(app.config.reader.image_protocol);
         let mut image_override = None;
         if app.config.reader.show_images {
             for img in &parsed_doc.images {
@@ -287,7 +286,6 @@ pub fn render_article_pane(
     let paragraph = Paragraph::new(rendered_lines).block(block);
     f.render_widget(paragraph, rect);
 
-    let resolved_proto = crate::graphics::resolve_protocol(app.config.reader.image_protocol);
     if app.config.reader.show_images {
         for img in &parsed_doc.images {
             let img_top = img.line_idx;
@@ -353,7 +351,17 @@ pub fn render_article_pane(
     }
 }
 
-pub fn build_search_highlighted_spans<'a>(
+pub fn clamp_to_char_boundary(s: &str, mut idx: usize) -> usize {
+    if idx >= s.len() {
+        return s.len();
+    }
+    while idx > 0 && !s.is_char_boundary(idx) {
+        idx -= 1;
+    }
+    idx
+}
+
+fn build_search_highlighted_spans<'a>(
     spans: &[Span<'a>],
     line_matches: &[(usize, usize, bool)],
 ) -> Vec<Span<'a>> {
@@ -377,8 +385,12 @@ pub fn build_search_highlighted_spans<'a>(
                 continue;
             }
 
-            let rel_match_start = m_start.saturating_sub(span_start).max(text_cursor);
-            let rel_match_end = (m_end.saturating_sub(span_start)).min(span_len);
+            let raw_rel_start = m_start.saturating_sub(span_start).max(text_cursor);
+            let raw_rel_end = (m_end.saturating_sub(span_start)).min(span_len);
+
+            let rel_match_start = clamp_to_char_boundary(text, raw_rel_start);
+            let rel_match_end = clamp_to_char_boundary(text, raw_rel_end);
+            text_cursor = clamp_to_char_boundary(text, text_cursor);
 
             if rel_match_start > text_cursor && rel_match_start <= span_len {
                 let unmatch_span = match &span.content {
@@ -448,22 +460,49 @@ fn build_selection_highlighted_spans<'a>(
             let rel_start = sel_start.saturating_sub(span_start).min(span_len);
             let rel_end = sel_end.saturating_sub(span_start).min(span_len);
 
-            let chars: Vec<char> = span.content.chars().collect();
+            let mut byte_start = span.content.len();
+            let mut byte_end = span.content.len();
+            for (char_idx, (b_idx, _)) in span.content.char_indices().enumerate() {
+                if char_idx == rel_start {
+                    byte_start = b_idx;
+                }
+                if char_idx == rel_end {
+                    byte_end = b_idx;
+                    break;
+                }
+            }
 
             if rel_start > 0 {
-                let prefix: String = chars[0..rel_start].iter().collect();
-                new_spans.push(Span::styled(prefix, span.style));
+                let prefix_span = match &span.content {
+                    std::borrow::Cow::Borrowed(s) => Span::styled(&s[..byte_start], span.style),
+                    std::borrow::Cow::Owned(s) => {
+                        Span::styled(s[..byte_start].to_string(), span.style)
+                    }
+                };
+                new_spans.push(prefix_span);
             }
 
             if rel_end > rel_start {
-                let selected: String = chars[rel_start..rel_end].iter().collect();
                 let sel_style = Style::default().bg(theme::PINK).fg(theme::BG).bold();
-                new_spans.push(Span::styled(selected, sel_style));
+                let sel_span = match &span.content {
+                    std::borrow::Cow::Borrowed(s) => {
+                        Span::styled(&s[byte_start..byte_end], sel_style)
+                    }
+                    std::borrow::Cow::Owned(s) => {
+                        Span::styled(s[byte_start..byte_end].to_string(), sel_style)
+                    }
+                };
+                new_spans.push(sel_span);
             }
 
             if rel_end < span_len {
-                let suffix: String = chars[rel_end..].iter().collect();
-                new_spans.push(Span::styled(suffix, span.style));
+                let suffix_span = match &span.content {
+                    std::borrow::Cow::Borrowed(s) => Span::styled(&s[byte_end..], span.style),
+                    std::borrow::Cow::Owned(s) => {
+                        Span::styled(s[byte_end..].to_string(), span.style)
+                    }
+                };
+                new_spans.push(suffix_span);
             }
         }
 

@@ -3,9 +3,7 @@ use crate::app::App;
 
 impl App {
     pub fn next_request_id(&mut self) -> u64 {
-        let req_id = self.next_request_id;
-        self.next_request_id = self.next_request_id.wrapping_add(1).max(1);
-        req_id
+        self.network.next_request_id()
     }
 
     pub fn send_fetch_article(&mut self, pane_id: usize, title: String) {
@@ -14,7 +12,7 @@ impl App {
             pane.current_request_id = request_id;
             pane.loading_title = Some(title.clone());
         }
-        let _ = self.cmd_tx.send(NetworkCommand::FetchArticle {
+        self.network.send(NetworkCommand::FetchArticle {
             request_id,
             pane_id,
             title,
@@ -30,7 +28,7 @@ impl App {
             pane.current_request_id = request_id;
             pane.loading_title = Some("random article".to_string());
         }
-        let _ = self.cmd_tx.send(NetworkCommand::FetchRandomArticle {
+        self.network.send(NetworkCommand::FetchRandomArticle {
             request_id,
             pane_id,
             timeout: self.config.network.timeout,
@@ -40,13 +38,13 @@ impl App {
     }
 
     pub fn send_fetch_feed_batch(&self) {
-        let _ = self.cmd_tx.send(NetworkCommand::FetchFeedBatch {
+        self.network.send(NetworkCommand::FetchFeedBatch {
             timeout: self.config.network.timeout,
         });
     }
 
     pub fn send_fetch_daily_feed(&self) {
-        let _ = self.cmd_tx.send(NetworkCommand::FetchDailyFeed {
+        self.network.send(NetworkCommand::FetchDailyFeed {
             timeout: self.config.network.timeout,
             offline_cache: self.config.network.offline_cache,
         });
@@ -54,7 +52,7 @@ impl App {
 
     pub fn send_fetch_stats(&self) {
         if self.config.ui.stats {
-            let _ = self.cmd_tx.send(NetworkCommand::FetchStats {
+            self.network.send(NetworkCommand::FetchStats {
                 timeout: self.config.network.timeout,
             });
         }
@@ -62,14 +60,14 @@ impl App {
 
     pub fn check_for_updates(&mut self) {
         self.set_status_message("checking for updates...".to_string());
-        let _ = self.cmd_tx.send(NetworkCommand::CheckForUpdates {
+        self.network.send(NetworkCommand::CheckForUpdates {
             timeout: self.config.network.timeout,
         });
     }
 
     pub fn send_fetch_image(&self, url: String) {
         if self.config.reader.show_images {
-            let _ = self.cmd_tx.send(NetworkCommand::FetchImage {
+            self.network.send(NetworkCommand::FetchImage {
                 url,
                 timeout: self.config.network.timeout,
             });

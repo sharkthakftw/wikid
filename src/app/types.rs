@@ -128,3 +128,113 @@ pub struct GraphicsState {
     pub last_kitty_render_tasks: Vec<ImageRenderTask>,
     pub has_active_kitty_images: bool,
 }
+
+#[derive(Clone, Debug, Default)]
+pub struct ClosedTabsHistory {
+    pub stack: Vec<ClosedTabState>,
+}
+
+impl ClosedTabsHistory {
+    pub fn push(&mut self, state: ClosedTabState) {
+        self.stack.push(state);
+        if self.stack.len() > 30 {
+            self.stack.remove(0);
+        }
+    }
+
+    pub fn pop(&mut self) -> Option<ClosedTabState> {
+        self.stack.pop()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.stack.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.stack.len()
+    }
+}
+
+pub struct ConfigManager {
+    pub current: crate::config::Config,
+    pub last_mtime: Option<std::time::SystemTime>,
+    pub last_check: std::time::Instant,
+}
+
+impl ConfigManager {
+    pub fn new(config: crate::config::Config) -> Self {
+        Self {
+            last_mtime: crate::config::Config::get_modified_time(),
+            last_check: std::time::Instant::now(),
+            current: config,
+        }
+    }
+
+    pub fn check_sync(&mut self) {
+        if self.last_check.elapsed() >= std::time::Duration::from_millis(500) {
+            self.last_check = std::time::Instant::now();
+            self.current.reload_if_changed(&mut self.last_mtime);
+        }
+    }
+
+    pub fn update_mtime(&mut self) {
+        self.last_mtime = crate::config::Config::get_modified_time();
+    }
+}
+
+impl std::ops::Deref for ConfigManager {
+    type Target = crate::config::Config;
+    fn deref(&self) -> &Self::Target {
+        &self.current
+    }
+}
+
+impl std::ops::DerefMut for ConfigManager {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.current
+    }
+}
+
+pub struct NetworkDispatcher {
+    pub next_request_id: u64,
+    pub cmd_tx: std::sync::mpsc::Sender<crate::api::NetworkCommand>,
+}
+
+impl NetworkDispatcher {
+    pub fn new(cmd_tx: std::sync::mpsc::Sender<crate::api::NetworkCommand>) -> Self {
+        Self {
+            next_request_id: 1,
+            cmd_tx,
+        }
+    }
+
+    pub fn next_request_id(&mut self) -> u64 {
+        let req_id = self.next_request_id;
+        self.next_request_id = self.next_request_id.wrapping_add(1).max(1);
+        req_id
+    }
+
+    pub fn send(&self, cmd: crate::api::NetworkCommand) {
+        let _ = self.cmd_tx.send(cmd);
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct StatusMessageState {
+    pub message: Option<(String, std::time::Instant)>,
+}
+
+impl StatusMessageState {
+    pub fn set(&mut self, msg: impl Into<String>) {
+        self.message = Some((msg.into(), std::time::Instant::now()));
+    }
+
+    pub fn get(&self) -> Option<&str> {
+        if let Some((msg, time)) = &self.message {
+            if time.elapsed().as_secs_f32() < 3.0 {
+                return Some(msg.as_str());
+            }
+        }
+        None
+    }
+}

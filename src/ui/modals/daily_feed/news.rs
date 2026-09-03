@@ -51,18 +51,72 @@ pub fn render_news_modal(
     } else {
         let avail_w = (modal_area.width as usize).saturating_sub(4);
         let mut row_counter = 0;
-        for item in &feed.news {
+
+        let dummy_cache;
+        let cache_ref = if let Some(modal_state) = &app.daily_feed_modal {
+            let mut cache = modal_state.cache.borrow_mut();
+            if cache.news_parsed.len() != feed.news.len() {
+                cache.news_parsed = feed
+                    .news
+                    .iter()
+                    .map(|item| {
+                        let raw_story = item.story.as_deref().unwrap_or("");
+                        let (chunks, links) = parse_story_html(raw_story);
+                        crate::ui::modals::daily_feed::ParsedStory { chunks, links }
+                    })
+                    .collect();
+                cache.news_width = 0;
+            }
+
+            if cache.news_width != avail_w {
+                cache.news_wrapped = cache
+                    .news_parsed
+                    .iter()
+                    .map(|parsed| {
+                        let wrapped = wrap_story_spans(&parsed.chunks, avail_w);
+                        crate::ui::modals::daily_feed::CachedWrappedItem {
+                            links: parsed.links.clone(),
+                            wrapped_lines: wrapped,
+                            year_str: String::new(),
+                            elapsed_str: String::new(),
+                        }
+                    })
+                    .collect();
+                cache.news_width = avail_w;
+            }
+            drop(cache);
+            modal_state.cache.borrow()
+        } else {
+            dummy_cache = std::cell::RefCell::new(crate::ui::modals::daily_feed::DailyFeedCache {
+                news_wrapped: feed
+                    .news
+                    .iter()
+                    .map(|item| {
+                        let raw_story = item.story.as_deref().unwrap_or("");
+                        let (chunks, links) = parse_story_html(raw_story);
+                        let wrapped = wrap_story_spans(&chunks, avail_w);
+                        crate::ui::modals::daily_feed::CachedWrappedItem {
+                            links,
+                            wrapped_lines: wrapped,
+                            year_str: String::new(),
+                            elapsed_str: String::new(),
+                        }
+                    })
+                    .collect(),
+                ..Default::default()
+            });
+            dummy_cache.borrow()
+        };
+
+        for cached_item in &cache_ref.news_wrapped {
             let is_selected = row_counter == selected_idx;
-            let raw_story = item.story.as_deref().unwrap_or("");
-            let (chunks, story_links) = parse_story_html(raw_story);
             let active_link_idx = if is_selected {
-                link_idx.min(story_links.len().saturating_sub(1))
+                link_idx.min(cached_item.links.len().saturating_sub(1))
             } else {
                 0
             };
 
-            let wrapped_lines = wrap_story_spans(&chunks, avail_w);
-            for (line_idx, line_words) in wrapped_lines.into_iter().enumerate() {
+            for (line_idx, line_words) in cached_item.wrapped_lines.iter().enumerate() {
                 let (prefix, prefix_style) = if line_idx == 0 {
                     if is_selected {
                         (" ▶ ", Style::default().fg(theme::BLUE).bold())
@@ -88,7 +142,7 @@ pub fn render_news_modal(
                         SpanStyle::Link {
                             link_idx: l_idx, ..
                         } => {
-                            if is_selected && l_idx == active_link_idx {
+                            if is_selected && *l_idx == active_link_idx {
                                 Style::default()
                                     .fg(theme::VIOLET)
                                     .bold()
@@ -104,7 +158,7 @@ pub fn render_news_modal(
                         SpanStyle::BoldLink {
                             link_idx: l_idx, ..
                         } => {
-                            if is_selected && l_idx == active_link_idx {
+                            if is_selected && *l_idx == active_link_idx {
                                 Style::default()
                                     .fg(theme::VIOLET)
                                     .bold()
@@ -119,7 +173,7 @@ pub fn render_news_modal(
                             }
                         }
                     };
-                    spans.push(Span::styled(text, span_style));
+                    spans.push(Span::styled(text.clone(), span_style));
                 }
                 lines.push(Line::from(spans));
             }

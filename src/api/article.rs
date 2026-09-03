@@ -40,8 +40,13 @@ fn fnv1a_hash(s: &str) -> u64 {
     })
 }
 
+pub fn normalize_title(title: &str) -> String {
+    crate::parser::url_decode(title).replace('_', " ").trim().to_string()
+}
+
 pub fn cache_file_path(title: &str) -> PathBuf {
-    let safe_name: String = title
+    let normalized = normalize_title(title);
+    let safe_name: String = normalized
         .chars()
         .map(|c| {
             if c.is_alphanumeric() || c == '_' || c == '-' {
@@ -52,7 +57,7 @@ pub fn cache_file_path(title: &str) -> PathBuf {
         })
         .collect();
 
-    let hash = fnv1a_hash(title);
+    let hash = fnv1a_hash(&normalized);
     cache_dir().join(format!("{}_{:016x}.html", safe_name, hash))
 }
 
@@ -88,19 +93,19 @@ pub fn fetch_article_wikipedia(
     offline_cache: bool,
     cache_lifetime: u64,
 ) -> Result<String, super::ApiError> {
+    let normalized_title = normalize_title(title);
     if offline_cache {
-        if let Some(cached_html) = get_cached_article(title, cache_lifetime) {
+        if let Some(cached_html) = get_cached_article(&normalized_title, cache_lifetime) {
             return Ok(cached_html);
         }
     }
 
-    let decoded_title = crate::parser::url_decode(title).replace('_', " ");
     let url = "https://en.wikipedia.org/w/api.php";
     let res = agent
         .get(url)
         .timeout(std::time::Duration::from_secs(timeout_secs.max(1)))
         .query("action", "parse")
-        .query("page", &decoded_title)
+        .query("page", &normalized_title)
         .query("prop", "text|categorieshtml")
         .query("format", "json")
         .query("disableeditsection", "1")
@@ -145,13 +150,13 @@ pub fn fetch_article_wikipedia(
             };
 
             if offline_cache {
-                save_cached_article(title, &combined_html);
+                save_cached_article(&normalized_title, &combined_html);
             }
             Ok(combined_html)
         }
         Err(err) => {
             if offline_cache {
-                let path = cache_file_path(title);
+                let path = cache_file_path(&normalized_title);
                 if let Ok(content) = std::fs::read_to_string(&path) {
                     return Ok(content);
                 }

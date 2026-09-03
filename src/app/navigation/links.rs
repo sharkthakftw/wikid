@@ -44,35 +44,13 @@ impl App {
         }
     }
 
+    pub fn active_selected_target(&self) -> Option<String> {
+        let recent = self.get_continue_reading_articles();
+        self.active_pane().selected_target(&recent)
+    }
+
     pub fn activate_selected(&mut self, term_height: u16) {
-        let (_pane_id, selected_title) = {
-            let pane = self.active_pane();
-            match &pane.content {
-                PaneContent::SearchResults { items, .. } => {
-                    if let Some(item) = items.get(pane.selected_idx) {
-                        (pane.id, Some(item.title.clone()))
-                    } else {
-                        (pane.id, None)
-                    }
-                }
-                PaneContent::Empty => {
-                    let recent = self.get_continue_reading_articles();
-                    (pane.id, recent.get(pane.selected_idx).cloned())
-                }
-                PaneContent::ArticleText { parsed_doc, .. } => {
-                    if let Some(link_idx) = pane.selected_link_idx {
-                        if let Some(link) = parsed_doc.links.get(link_idx) {
-                            (pane.id, Some(link.title.clone()))
-                        } else {
-                            (pane.id, None)
-                        }
-                    } else {
-                        (pane.id, None)
-                    }
-                }
-                _ => (pane.id, None),
-            }
-        };
+        let selected_title = self.active_selected_target();
 
         if let Some(target) = selected_title {
             if let Some(anchor) = target.strip_prefix('#') {
@@ -94,7 +72,7 @@ impl App {
                         })
                         .or_else(|| {
                             parsed_doc.links.iter().find_map(|l| {
-                                if l.title == target || l.title == format!("#{}", anchor) {
+                                if l.title == target || l.title == anchor {
                                     l.span_indices.first().map(|(line, _)| *line)
                                 } else {
                                     None
@@ -161,23 +139,7 @@ impl App {
     }
 
     pub fn activate_selected_in_new_tab(&mut self) {
-        let selected_title = {
-            let pane = self.active_pane();
-            match &pane.content {
-                PaneContent::SearchResults { items, .. } => {
-                    items.get(pane.selected_idx).map(|item| item.title.clone())
-                }
-                PaneContent::Empty => {
-                    let recent = self.get_continue_reading_articles();
-                    recent.get(pane.selected_idx).cloned()
-                }
-                PaneContent::ArticleText { parsed_doc, .. } => pane
-                    .selected_link_idx
-                    .and_then(|idx| parsed_doc.links.get(idx))
-                    .map(|link| link.title.clone()),
-                _ => None,
-            }
-        };
+        let selected_title = self.active_selected_target();
 
         if let Some(title) = selected_title.filter(|t| is_article_link(t)) {
             self.new_tab();
@@ -189,23 +151,7 @@ impl App {
     }
 
     pub fn activate_selected_in_split(&mut self, direction: SplitDirection) {
-        let selected_title = {
-            let pane = self.active_pane();
-            match &pane.content {
-                PaneContent::SearchResults { items, .. } => {
-                    items.get(pane.selected_idx).map(|item| item.title.clone())
-                }
-                PaneContent::Empty => {
-                    let recent = self.get_continue_reading_articles();
-                    recent.get(pane.selected_idx).cloned()
-                }
-                PaneContent::ArticleText { parsed_doc, .. } => pane
-                    .selected_link_idx
-                    .and_then(|idx| parsed_doc.links.get(idx))
-                    .map(|link| link.title.clone()),
-                _ => None,
-            }
-        };
+        let selected_title = self.active_selected_target();
 
         if let Some(title) = selected_title.filter(|t| is_article_link(t)) {
             self.split_active_pane(direction);

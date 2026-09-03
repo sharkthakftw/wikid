@@ -2,8 +2,6 @@ use crate::app::{App, InputMode};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 pub fn handle_palette_mode(app: &mut App, key: KeyEvent) {
-    let filtered_len = crate::palette::filter_commands(&app.command_palette.query).len();
-
     match key.code {
         KeyCode::Esc => {
             app.input_mode = InputMode::Normal;
@@ -20,14 +18,14 @@ pub fn handle_palette_mode(app: &mut App, key: KeyEvent) {
             app.command_palette.selected_idx = app.command_palette.selected_idx.saturating_sub(1);
         }
         KeyCode::Down | KeyCode::Tab => {
+            let filtered_len = crate::palette::filter_commands(&app.command_palette.query).len();
             if filtered_len > 0 {
                 app.command_palette.selected_idx =
                     (app.command_palette.selected_idx + 1).min(filtered_len.saturating_sub(1));
             }
         }
-        KeyCode::Char('n') | KeyCode::Char('j')
-            if key.modifiers.contains(KeyModifiers::CONTROL) =>
-        {
+        KeyCode::Char('n' | 'j') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            let filtered_len = crate::palette::filter_commands(&app.command_palette.query).len();
             if filtered_len > 0 {
                 app.command_palette.selected_idx =
                     (app.command_palette.selected_idx + 1).min(filtered_len.saturating_sub(1));

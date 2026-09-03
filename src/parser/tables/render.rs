@@ -9,28 +9,28 @@ pub fn render_grid(
     grid: &TableGrid,
     col_widths: &[usize],
     row_heights: &[usize],
-    origin_lines: &[Vec<Vec<Vec<Span<'static>>>>],
-    origin_links: &[Vec<Vec<CellLinkInfo>>],
+    mut origin_lines: Vec<Vec<Vec<Span<'static>>>>,
+    mut origin_links: Vec<Vec<CellLinkInfo>>,
     doc: &mut ParsedDocument,
 ) {
     let num_rows = grid.num_rows;
     let num_cols = grid.num_cols;
 
-    let mut cell_rendered_lines: Vec<Vec<Vec<Vec<Span<'static>>>>> =
-        vec![vec![Vec::new(); num_cols]; num_rows];
-    let mut cell_rendered_links: Vec<Vec<Vec<CellLinkInfo>>> =
-        vec![vec![Vec::new(); num_cols]; num_rows];
+    let mut cell_rendered_lines: Vec<Vec<Vec<Span<'static>>>> =
+        vec![Vec::new(); num_rows * num_cols];
+    let mut cell_rendered_links: Vec<Vec<CellLinkInfo>> =
+        vec![Vec::new(); num_rows * num_cols];
 
     for r in 0..num_rows {
         for c in 0..num_cols {
+            let idx = r * num_cols + c;
             if let CellEntry::Origin { rowspan, .. } = &grid.cells[r][c] {
-                let all_lines = &origin_lines[r][c];
-                let all_links = &origin_links[r][c];
-
                 if *rowspan == 1 {
-                    cell_rendered_lines[r][c] = all_lines.clone();
-                    cell_rendered_links[r][c] = all_links.clone();
+                    cell_rendered_lines[idx] = std::mem::take(&mut origin_lines[idx]);
+                    cell_rendered_links[idx] = std::mem::take(&mut origin_links[idx]);
                 } else {
+                    let all_lines = &origin_lines[idx];
+                    let all_links = &origin_links[idx];
                     let total_slots: usize =
                         (0..*rowspan).filter_map(|dr| row_heights.get(r + dr)).sum();
                     let top_pad = total_slots.saturating_sub(all_lines.len()) / 2;
@@ -42,6 +42,7 @@ pub fn render_grid(
                         if curr_r >= num_rows {
                             break;
                         }
+                        let curr_idx = curr_r * num_cols + c;
                         let mut chunk = Vec::new();
                         let mut chunk_links = Vec::new();
 
@@ -64,8 +65,8 @@ pub fn render_grid(
                             }
                             slot += 1;
                         }
-                        cell_rendered_lines[curr_r][c] = chunk;
-                        cell_rendered_links[curr_r][c] = chunk_links;
+                        cell_rendered_lines[curr_idx] = chunk;
+                        cell_rendered_links[curr_idx] = chunk_links;
                     }
                 }
             }
@@ -96,7 +97,7 @@ pub fn render_grid(
 
     for r in 0..num_rows {
         let start_idx = doc.lines.len();
-        let mut cell_span_starts = vec![vec![0usize; num_cols]; row_heights[r]];
+        let mut cell_span_starts = vec![0usize; row_heights[r] * num_cols];
 
         for line_in_row in 0..row_heights[r] {
             let mut line_spans = vec![Span::styled("│ ", border_style)];
@@ -120,8 +121,7 @@ pub fn render_grid(
 
                 let empty = Vec::new();
                 let cell_spans = cell_rendered_lines
-                    .get(r)
-                    .and_then(|row| row.get(orig_c))
+                    .get(r * num_cols + orig_c)
                     .and_then(|lines| lines.get(line_in_row))
                     .unwrap_or(&empty);
 
@@ -131,7 +131,7 @@ pub fn render_grid(
                     .sum();
                 let padding = span_w.saturating_sub(content_len);
 
-                cell_span_starts[line_in_row][orig_c] = line_spans.len();
+                cell_span_starts[line_in_row * num_cols + orig_c] = line_spans.len();
 
                 for span in cell_spans {
                     line_spans.push(span.clone());
@@ -152,13 +152,13 @@ pub fn render_grid(
 
         let mut row_links = Vec::new();
         for col_i in 0..num_cols {
-            if let Some(links) = cell_rendered_links.get(r).and_then(|row| row.get(col_i)) {
+            if let Some(links) = cell_rendered_links.get(r * num_cols + col_i) {
                 for (target, text, coords) in links {
                     let mut span_indices = Vec::new();
                     for &(local_l, local_s) in coords {
                         if local_l < row_heights[r] {
                             let abs_l = start_idx + local_l;
-                            let span_start = cell_span_starts[local_l][col_i];
+                            let span_start = cell_span_starts[local_l * num_cols + col_i];
                             span_indices.push((abs_l, span_start + local_s));
                         }
                     }

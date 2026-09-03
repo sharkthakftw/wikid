@@ -51,8 +51,8 @@ pub fn render_table<'a>(
 
     let col_widths = compute_column_widths(&grid, max_width);
 
-    let mut origin_lines = vec![vec![Vec::new(); num_cols]; num_rows];
-    let mut origin_links = vec![vec![Vec::new(); num_cols]; num_rows];
+    let mut origin_lines = vec![Vec::new(); num_rows * num_cols];
+    let mut origin_links = vec![Vec::new(); num_rows * num_cols];
 
     for r in 0..num_rows {
         for c in 0..num_cols {
@@ -65,8 +65,9 @@ pub fn render_table<'a>(
                     .sum::<usize>();
                 span_w += (*colspan - 1) * 3;
                 let (lines, links) = wrap_cell_tokens(tokens, span_w);
-                origin_lines[r][c] = lines;
-                origin_links[r][c] = links;
+                let idx = r * num_cols + c;
+                origin_lines[idx] = lines;
+                origin_links[idx] = links;
             }
         }
     }
@@ -77,8 +78,8 @@ pub fn render_table<'a>(
         &grid,
         &col_widths,
         &row_heights,
-        &origin_lines,
-        &origin_links,
+        origin_lines,
+        origin_links,
         doc,
     );
 }

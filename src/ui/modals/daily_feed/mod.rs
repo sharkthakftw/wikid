@@ -8,7 +8,8 @@ pub use html::{parse_onthisday_event, parse_story_html, strip_html_tags, wrap_st
 pub use news::{get_ongoing_links, get_recent_deaths_links, render_news_modal};
 pub use on_this_day::{get_otd_tab_at, render_on_this_day_modal, today_date_str};
 pub use types::{
-    DailyFeedKind, DailyFeedModalState, FeedEntry, OnThisDayTab, SpanStyle, StyledChunk,
+    CachedWrappedItem, DailyFeedCache, DailyFeedKind, DailyFeedModalState, FeedEntry, OnThisDayTab,
+    ParsedStory, SpanStyle, StyledChunk,
 };
 
 use crate::app::App;

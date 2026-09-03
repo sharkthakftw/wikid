@@ -50,7 +50,12 @@ impl FeedProfile {
             .ok()
             .and_then(|content| serde_json::from_str::<FeedProfile>(&content).ok());
 
-        if let Some(profile) = loaded {
+        if let Some(mut profile) = loaded {
+            let mut normalized = HashMap::with_capacity(profile.category_scores.len());
+            for (k, v) in profile.category_scores {
+                normalized.insert(k.to_lowercase(), v);
+            }
+            profile.category_scores = normalized;
             return profile;
         }
         let profile = Self::default();
@@ -110,9 +115,23 @@ impl FeedProfile {
 
     pub fn score_for_categories(&self, categories: &[String]) -> i32 {
         let mut score = 0;
+        let mut buf = [0u8; 64];
         for cat in categories {
-            if let Some(&cat_score) = self.category_scores.get(&cat.to_lowercase()) {
-                score += cat_score;
+            let cat_score = if cat.len() <= buf.len() && cat.is_ascii() {
+                let bytes = cat.as_bytes();
+                for (i, &b) in bytes.iter().enumerate() {
+                    buf[i] = b.to_ascii_lowercase();
+                }
+                let lower_str = std::str::from_utf8(&buf[..bytes.len()]).unwrap_or("");
+                self.category_scores.get(lower_str).copied()
+            } else {
+                self.category_scores
+                    .iter()
+                    .find(|(k, _)| k.eq_ignore_ascii_case(cat))
+                    .map(|(_, &s)| s)
+            };
+            if let Some(s) = cat_score {
+                score += s;
             }
         }
         score
@@ -124,7 +143,7 @@ impl FeedProfile {
             if let Some((_, label, subcats)) = POPULAR_CATEGORIES.get(idx) {
                 self.selected_categories.push(label.to_string());
                 for subcat in *subcats {
-                    let current = self.category_scores.entry(subcat.to_string()).or_insert(0);
+                    let current = self.category_scores.entry(subcat.to_lowercase()).or_insert(0);
                     *current += 200;
                 }
             }

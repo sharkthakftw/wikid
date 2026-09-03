@@ -1,27 +1,18 @@
-use super::utils::{centered_rect, create_modal_block, create_selectable_line};
+use super::utils::{
+    compute_two_column_modal_areas, create_modal_block, create_selectable_line,
+    render_selectable_list_column,
+};
 use crate::app::{App, PaneContent};
 use crate::theme;
 use ratatui::{
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::Rect,
     style::{Style, Stylize},
     text::{Line, Span},
-    widgets::Paragraph,
     Frame,
 };
 
 pub fn compute_categories_modal_areas(size: Rect) -> (Rect, Rect, Rect) {
-    let container_area = centered_rect(80, 75, size);
-    let inner_area = Rect::new(
-        container_area.x + 1,
-        container_area.y + 1,
-        container_area.width.saturating_sub(2),
-        container_area.height.saturating_sub(2),
-    );
-    let chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(35), Constraint::Percentage(65)])
-        .split(inner_area);
-    (container_area, chunks[0], chunks[1])
+    compute_two_column_modal_areas(80, 75, 35, size)
 }
 
 pub fn render_categories_modal(f: &mut Frame, app: &App, size: Rect) {
@@ -60,12 +51,6 @@ pub fn render_categories_modal(f: &mut Frame, app: &App, size: Rect) {
     );
 
     let selected_cat_idx = app.categories_modal.cursor_idx.min(total.saturating_sub(1));
-    let left_visible_rows = (left_area.height.saturating_sub(2)) as usize;
-    let left_scroll = crate::ui::modals::utils::compute_centered_scroll(
-        selected_cat_idx,
-        left_visible_rows,
-        total,
-    );
 
     let mut cat_lines = Vec::new();
     if categories.is_empty() {
@@ -86,10 +71,14 @@ pub fn render_categories_modal(f: &mut Frame, app: &App, size: Rect) {
         }
     }
 
-    let left_paragraph = Paragraph::new(cat_lines)
-        .block(left_block)
-        .scroll((left_scroll as u16, 0));
-    f.render_widget(left_paragraph, left_area);
+    render_selectable_list_column(
+        f,
+        left_area,
+        left_block,
+        cat_lines,
+        selected_cat_idx,
+        total,
+    );
 
     let selected_category = categories
         .get(selected_cat_idx)
@@ -113,8 +102,8 @@ pub fn render_categories_modal(f: &mut Frame, app: &App, size: Rect) {
     );
 
     let mut article_lines = Vec::new();
-    let right_visible_rows = (right_area.height.saturating_sub(2)) as usize;
-    let mut right_scroll = 0;
+    let mut selected_art_idx = 0;
+    let mut total_members = 0;
 
     if categories.is_empty() {
         article_lines.push(Line::from(vec![Span::styled(
@@ -137,16 +126,11 @@ pub fn render_categories_modal(f: &mut Frame, app: &App, size: Rect) {
                 Style::default().fg(theme::GREY).italic(),
             )]));
         } else {
-            let total_members = members.len();
-            let selected_art_idx = app
+            total_members = members.len();
+            selected_art_idx = app
                 .categories_modal
                 .article_cursor_idx
                 .min(total_members.saturating_sub(1));
-            right_scroll = crate::ui::modals::utils::compute_centered_scroll(
-                selected_art_idx,
-                right_visible_rows,
-                total_members,
-            );
 
             for (idx, member) in members.iter().enumerate() {
                 let is_selected = idx == selected_art_idx;
@@ -166,10 +150,14 @@ pub fn render_categories_modal(f: &mut Frame, app: &App, size: Rect) {
         )]));
     }
 
-    let right_paragraph = Paragraph::new(article_lines)
-        .block(right_block)
-        .scroll((right_scroll as u16, 0));
-    f.render_widget(right_paragraph, right_area);
+    render_selectable_list_column(
+        f,
+        right_area,
+        right_block,
+        article_lines,
+        selected_art_idx,
+        total_members,
+    );
 }
 
 pub fn get_category_item_at(app: &App, is_right: bool, area: Rect, target_y: u16) -> Option<usize> {

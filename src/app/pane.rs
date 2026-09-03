@@ -139,6 +139,20 @@ impl Pane {
         self.halfblock_cache.clear();
     }
 
+    pub fn selected_target(&self, recent_articles: &[String]) -> Option<String> {
+        match &self.content {
+            PaneContent::SearchResults { items, .. } => {
+                items.get(self.selected_idx).map(|item| item.title.clone())
+            }
+            PaneContent::Empty => recent_articles.get(self.selected_idx).cloned(),
+            PaneContent::ArticleText { parsed_doc, .. } => self
+                .selected_link_idx
+                .and_then(|idx| parsed_doc.links.get(idx))
+                .map(|link| link.title.clone()),
+            _ => None,
+        }
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub fn ensure_parsed_width(&mut self, opts: ArticleRenderOptions) {
         if let PaneContent::ArticleText {

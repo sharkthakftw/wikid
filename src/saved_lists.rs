@@ -204,4 +204,25 @@ impl SavedListsStore {
             }
         }
     }
+
+    pub fn sync_liked_articles(&mut self, feed_liked: &mut HashSet<String>) {
+        self.ensure_list("liked", "Liked");
+        let mut modified = false;
+        if let Some(list) = self.lists.iter_mut().find(|l| l.id == "liked") {
+            for title in feed_liked.iter() {
+                let title_trimmed = title.trim();
+                if !title_trimmed.is_empty() && !list.articles.iter().any(|a| a == title_trimmed) {
+                    list.articles.push(title_trimmed.to_string());
+                    modified = true;
+                }
+            }
+            for title in &list.articles {
+                feed_liked.insert(title.clone());
+            }
+        }
+        if modified {
+            self.save();
+            self.rebuild_cache();
+        }
+    }
 }

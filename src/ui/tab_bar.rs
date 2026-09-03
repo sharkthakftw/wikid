@@ -7,6 +7,110 @@ use ratatui::{
     widgets::Paragraph,
     Frame,
 };
+use std::hash::{Hash, Hasher};
+use std::sync::Mutex;
+
+#[derive(Default)]
+struct TabBarCache {
+    key: u64,
+    rendered_line: Line<'static>,
+    tab_titles: Vec<String>,
+    visible_range: (usize, usize),
+}
+
+static TAB_BAR_CACHE: Mutex<Option<TabBarCache>> = Mutex::new(None);
+
+fn compute_tab_bar_key(app: &App, area_width: u16) -> u64 {
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    app.active_tab_idx.hash(&mut hasher);
+    app.tabs.len().hash(&mut hasher);
+    area_width.hash(&mut hasher);
+    app.config.ui.icons.hash(&mut hasher);
+
+    for tab in &app.tabs {
+        tab.name.hash(&mut hasher);
+        tab.active_pane_idx.hash(&mut hasher);
+        tab.panes.len().hash(&mut hasher);
+
+        let loading_pane = tab.panes.iter().find(|p| p.is_loading);
+        if let Some(pane) = loading_pane {
+            true.hash(&mut hasher);
+            pane.loading_title.as_deref().hash(&mut hasher);
+            crate::ui::current_spinner_frame().hash(&mut hasher);
+        } else if let Some(pane) = tab.panes.get(tab.active_pane_idx) {
+            false.hash(&mut hasher);
+            match &pane.content {
+                PaneContent::ArticleText {
+                    title, parsed_doc, ..
+                } => {
+                    0u8.hash(&mut hasher);
+                    title.hash(&mut hasher);
+                    parsed_doc.spoken_audio.is_some().hash(&mut hasher);
+                    app.saved_lists.is_article_saved_anywhere(title).hash(&mut hasher);
+                }
+                PaneContent::SearchResults { query, .. } => {
+                    1u8.hash(&mut hasher);
+                    query.hash(&mut hasher);
+                }
+                PaneContent::Error(e) => {
+                    2u8.hash(&mut hasher);
+                    e.hash(&mut hasher);
+                }
+                PaneContent::Empty => {
+                    3u8.hash(&mut hasher);
+                }
+            }
+        }
+    }
+
+    hasher.finish()
+}
+
+fn build_tab_bar_line(
+    tab_titles: &[String],
+    active_idx: usize,
+    area_width: u16,
+) -> (Line<'static>, (usize, usize)) {
+    let total_tabs = tab_titles.len();
+    let active_idx = active_idx.min(total_tabs.saturating_sub(1));
+    let (start_idx, end_idx) = compute_visible_range(tab_titles, active_idx, area_width);
+
+    let mut tab_spans = Vec::new();
+    tab_spans.push(Span::raw(" "));
+
+    if start_idx > 0 {
+        tab_spans.push(Span::styled(
+            "< ",
+            Style::default().fg(theme::YELLOW).bold(),
+        ));
+    }
+
+    for (i, title) in tab_titles
+        .iter()
+        .enumerate()
+        .take(end_idx + 1)
+        .skip(start_idx)
+    {
+        let is_active = i == active_idx;
+        if is_active {
+            let active_style = Style::default().fg(theme::LIME).bg(theme::LIGHT_BG).bold();
+            tab_spans.push(Span::styled(format!(" {} ", title), active_style));
+        } else {
+            let inactive_style = Style::default().fg(theme::GREY);
+            tab_spans.push(Span::styled(format!(" {} ", title), inactive_style));
+        }
+        tab_spans.push(Span::raw("  "));
+    }
+
+    if end_idx + 1 < total_tabs {
+        tab_spans.push(Span::styled(
+            "> ",
+            Style::default().fg(theme::YELLOW).bold(),
+        ));
+    }
+
+    (Line::from(tab_spans), (start_idx, end_idx))
+}
 
 pub fn compute_tab_titles(app: &App) -> Vec<String> {
     app.tabs
@@ -142,10 +246,30 @@ pub fn get_tab_at_col(app: &App, area_width: u16, target_col: u16) -> Option<usi
         return None;
     }
 
-    let tab_titles = compute_tab_titles(app);
-    let total_tabs = tab_titles.len();
-    let (start_idx, end_idx) = compute_visible_range(&tab_titles, app.active_tab_idx, area_width);
+    let key = compute_tab_bar_key(app, area_width);
+    let mut cache_guard = TAB_BAR_CACHE.lock().unwrap();
+    let (tab_titles, start_idx, end_idx) =
+        if let Some(cache) = cache_guard.as_ref().filter(|c| c.key == key) {
+            (
+                cache.tab_titles.clone(),
+                cache.visible_range.0,
+                cache.visible_range.1,
+            )
+        } else {
+            let titles = compute_tab_titles(app);
+            let active_idx = app.active_tab_idx.min(titles.len().saturating_sub(1));
+            let (line, (s, e)) = build_tab_bar_line(&titles, active_idx, area_width);
+            *cache_guard = Some(TabBarCache {
+                key,
+                rendered_line: line,
+                tab_titles: titles.clone(),
+                visible_range: (s, e),
+            });
+            (titles, s, e)
+        };
+    drop(cache_guard);
 
+    let total_tabs = tab_titles.len();
     let mut col: u16 = 1;
     if start_idx > 0 {
         if target_col >= col && target_col < col + 2 {
@@ -179,45 +303,26 @@ pub fn render(f: &mut Frame, app: &App, area: Rect) {
         return;
     }
 
-    let tab_titles = compute_tab_titles(app);
-    let total_tabs = tab_titles.len();
-    let active_idx = app.active_tab_idx.min(total_tabs - 1);
-    let (start_idx, end_idx) = compute_visible_range(&tab_titles, app.active_tab_idx, area.width);
+    let key = compute_tab_bar_key(app, area.width);
+    let mut cache_guard = TAB_BAR_CACHE.lock().unwrap();
+    let line = if let Some(cache) = cache_guard.as_ref().filter(|c| c.key == key) {
+        cache.rendered_line.clone()
+    } else {
+        let tab_titles = compute_tab_titles(app);
+        let active_idx = app.active_tab_idx.min(tab_titles.len().saturating_sub(1));
+        let (new_line, (start_idx, end_idx)) =
+            build_tab_bar_line(&tab_titles, active_idx, area.width);
+        let line_clone = new_line.clone();
+        *cache_guard = Some(TabBarCache {
+            key,
+            rendered_line: new_line,
+            tab_titles,
+            visible_range: (start_idx, end_idx),
+        });
+        line_clone
+    };
+    drop(cache_guard);
 
-    let mut tab_spans = Vec::new();
-    tab_spans.push(Span::raw(" "));
-
-    if start_idx > 0 {
-        tab_spans.push(Span::styled(
-            "< ",
-            Style::default().fg(theme::YELLOW).bold(),
-        ));
-    }
-
-    for (i, title) in tab_titles
-        .iter()
-        .enumerate()
-        .take(end_idx + 1)
-        .skip(start_idx)
-    {
-        let is_active = i == active_idx;
-        if is_active {
-            let active_style = Style::default().fg(theme::LIME).bg(theme::LIGHT_BG).bold();
-            tab_spans.push(Span::styled(format!(" {} ", title), active_style));
-        } else {
-            let inactive_style = Style::default().fg(theme::GREY);
-            tab_spans.push(Span::styled(format!(" {} ", title), inactive_style));
-        }
-        tab_spans.push(Span::raw("  "));
-    }
-
-    if end_idx + 1 < total_tabs {
-        tab_spans.push(Span::styled(
-            "> ",
-            Style::default().fg(theme::YELLOW).bold(),
-        ));
-    }
-
-    let tab_bar_paragraph = Paragraph::new(Line::from(tab_spans));
+    let tab_bar_paragraph = Paragraph::new(line);
     f.render_widget(tab_bar_paragraph, area);
 }

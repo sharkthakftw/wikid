@@ -152,14 +152,14 @@ pub fn filter_commands(query: &str) -> Vec<(&'static CommandDef, Vec<usize>)> {
 
     let mut matches = Vec::new();
     for cmd in COMMANDS {
-        let label_lower = cmd.label.to_lowercase();
-        if let Some(pos) = label_lower.find(&q) {
+        let label = cmd.label;
+        if let Some(pos) = label.find(&q) {
             let match_indices = (pos..pos + q.len()).collect();
             matches.push((cmd, match_indices, 0));
         } else {
             let mut match_indices = Vec::new();
             let mut q_chars = q.chars().peekable();
-            for (idx, ch) in label_lower.char_indices() {
+            for (idx, ch) in label.char_indices() {
                 if let Some(&qc) = q_chars.peek() {
                     if ch == qc {
                         match_indices.push(idx);

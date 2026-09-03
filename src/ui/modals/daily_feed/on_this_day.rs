@@ -66,11 +66,121 @@ pub fn render_on_this_day_modal(
         &feed.onthisday
     };
 
+    let avail_w = (modal_area.width as usize).saturating_sub(4);
+
+    let dummy_cache;
+    let cache_ref = if let Some(modal_state) = &app.daily_feed_modal {
+        let mut cache = modal_state.cache.borrow_mut();
+        let parsed_list = match otd_tab {
+            OnThisDayTab::Events => &mut cache.otd_events_parsed,
+            OnThisDayTab::Births => &mut cache.otd_births_parsed,
+            OnThisDayTab::Deaths => &mut cache.otd_deaths_parsed,
+            OnThisDayTab::Holidays => &mut cache.otd_holidays_parsed,
+        };
+
+        if parsed_list.len() != events_slice.len() {
+            *parsed_list = events_slice
+                .iter()
+                .map(|ev| {
+                    let (chunks, links) = parse_onthisday_event(&ev.text, &ev.pages);
+                    crate::ui::modals::daily_feed::ParsedStory { chunks, links }
+                })
+                .collect();
+            cache.otd_cached_width = 0;
+        }
+
+        if cache.otd_cached_tab != Some(otd_tab) || cache.otd_cached_width != avail_w {
+            let current_year = crate::api::daily_feed::utc_today().0 as i32;
+            let parsed_list = match otd_tab {
+                OnThisDayTab::Events => &cache.otd_events_parsed,
+                OnThisDayTab::Births => &cache.otd_births_parsed,
+                OnThisDayTab::Deaths => &cache.otd_deaths_parsed,
+                OnThisDayTab::Holidays => &cache.otd_holidays_parsed,
+            };
+
+            cache.otd_wrapped = events_slice
+                .iter()
+                .zip(parsed_list.iter())
+                .map(|(event, parsed)| {
+                    let (year_str, elapsed_str) = match event.year {
+                        Some(y) if y < 0 => {
+                            let yrs = current_year + y.abs();
+                            (format!("{} BC", y.abs()), format!("({} yrs ago) ", yrs))
+                        }
+                        Some(y) => {
+                            let yrs = current_year - y;
+                            if yrs == 0 {
+                                (format!("{}", y), "(this year) ".to_string())
+                            } else {
+                                (format!("{}", y), format!("({} yrs ago) ", yrs))
+                            }
+                        }
+                        None => ("Holiday".to_string(), String::new()),
+                    };
+                    let badge_prefix = format!("[ {} ] {}", year_str, elapsed_str);
+                    let badge_len = badge_prefix.chars().count();
+                    let text_w = avail_w.saturating_sub(badge_len + 3);
+                    let wrapped = wrap_story_spans(&parsed.chunks, text_w + 3);
+
+                    crate::ui::modals::daily_feed::CachedWrappedItem {
+                        links: parsed.links.clone(),
+                        wrapped_lines: wrapped,
+                        year_str,
+                        elapsed_str,
+                    }
+                })
+                .collect();
+            cache.otd_cached_tab = Some(otd_tab);
+            cache.otd_cached_width = avail_w;
+        }
+
+        drop(cache);
+        modal_state.cache.borrow()
+    } else {
+        let current_year = crate::api::daily_feed::utc_today().0 as i32;
+        dummy_cache = std::cell::RefCell::new(crate::ui::modals::daily_feed::DailyFeedCache {
+            otd_wrapped: events_slice
+                .iter()
+                .map(|event| {
+                    let (chunks, links) = parse_onthisday_event(&event.text, &event.pages);
+                    let (year_str, elapsed_str) = match event.year {
+                        Some(y) if y < 0 => {
+                            let yrs = current_year + y.abs();
+                            (format!("{} BC", y.abs()), format!("({} yrs ago) ", yrs))
+                        }
+                        Some(y) => {
+                            let yrs = current_year - y;
+                            if yrs == 0 {
+                                (format!("{}", y), "(this year) ".to_string())
+                            } else {
+                                (format!("{}", y), format!("({} yrs ago) ", yrs))
+                            }
+                        }
+                        None => ("Holiday".to_string(), String::new()),
+                    };
+                    let badge_prefix = format!("[ {} ] {}", year_str, elapsed_str);
+                    let badge_len = badge_prefix.chars().count();
+                    let text_w = avail_w.saturating_sub(badge_len + 3);
+                    let wrapped = wrap_story_spans(&chunks, text_w + 3);
+
+                    crate::ui::modals::daily_feed::CachedWrappedItem {
+                        links,
+                        wrapped_lines: wrapped,
+                        year_str,
+                        elapsed_str,
+                    }
+                })
+                .collect(),
+            ..Default::default()
+        });
+        dummy_cache.borrow()
+    };
+
     let selected_event = events_slice.get(selected_idx);
     let focused_page = selected_event.and_then(|ev| {
-        let (_, event_links) = parse_onthisday_event(&ev.text, &ev.pages);
-        let active_link_idx = link_idx.min(event_links.len().saturating_sub(1));
-        let target = event_links.get(active_link_idx)?;
+        let links = &cache_ref.otd_wrapped.get(selected_idx)?.links;
+        let active_link_idx = link_idx.min(links.len().saturating_sub(1));
+        let target = links.get(active_link_idx)?;
         ev.pages
             .iter()
             .find(|p| &p.title == target || p.display_title() == *target)
@@ -81,7 +191,6 @@ pub fn render_on_this_day_modal(
     if let Some(page) = focused_page {
         if let Some(desc) = page.description.as_deref().filter(|d| !d.is_empty()) {
             let icon = if app.config.ui.icons { "󰋼 " } else { "" };
-            let avail_w = (modal_area.width as usize).saturating_sub(4);
             let icon_w = unicode_width::UnicodeWidthStr::width(icon);
             let prefix_w = 1 + icon_w + 2;
 
@@ -186,37 +295,18 @@ pub fn render_on_this_day_modal(
             Style::default().fg(theme::GREY).italic(),
         )]));
     } else {
-        for (idx, event) in events_slice.iter().enumerate() {
+        for (idx, item) in cache_ref.otd_wrapped.iter().enumerate() {
             line_offsets.push(lines.len());
             let is_selected = idx == selected_idx;
-            let current_year = crate::api::daily_feed::utc_today().0 as i32;
-            let (year_str, elapsed_str) = match event.year {
-                Some(y) if y < 0 => {
-                    let yrs = current_year + y.abs();
-                    (format!("{} BC", y.abs()), format!("({} yrs ago) ", yrs))
-                }
-                Some(y) => {
-                    let yrs = current_year - y;
-                    if yrs == 0 {
-                        (format!("{}", y), "(this year) ".to_string())
-                    } else {
-                        (format!("{}", y), format!("({} yrs ago) ", yrs))
-                    }
-                }
-                None => ("Holiday".to_string(), String::new()),
-            };
-            let (chunks, event_links) = parse_onthisday_event(&event.text, &event.pages);
             let active_link_idx = if is_selected {
-                link_idx.min(event_links.len().saturating_sub(1))
+                link_idx.min(item.links.len().saturating_sub(1))
             } else {
                 0
             };
-            let badge_prefix = format!("[ {} ] {}", year_str, elapsed_str);
+            let badge_prefix = format!("[ {} ] {}", item.year_str, item.elapsed_str);
             let badge_len = badge_prefix.chars().count();
-            let text_w = avail_w.saturating_sub(badge_len + 3);
 
-            let wrapped_lines = wrap_story_spans(&chunks, text_w + 3);
-            for (line_idx, line_words) in wrapped_lines.into_iter().enumerate() {
+            for (line_idx, line_words) in item.wrapped_lines.iter().enumerate() {
                 let mut spans = Vec::new();
                 if line_idx == 0 {
                     let prefix = if is_selected { " ▶ " } else { "   " };
@@ -228,13 +318,13 @@ pub fn render_on_this_day_modal(
                     spans.push(Span::styled(prefix, prefix_style));
                     spans.push(Span::styled("[ ", Style::default().fg(theme::DARK_GREY)));
                     spans.push(Span::styled(
-                        year_str.clone(),
+                        item.year_str.clone(),
                         Style::default().fg(theme::BLUE).bold(),
                     ));
                     spans.push(Span::styled(" ] ", Style::default().fg(theme::DARK_GREY)));
-                    if !elapsed_str.is_empty() {
+                    if !item.elapsed_str.is_empty() {
                         spans.push(Span::styled(
-                            elapsed_str.clone(),
+                            item.elapsed_str.clone(),
                             Style::default().fg(theme::GREY).italic(),
                         ));
                     }
@@ -257,7 +347,7 @@ pub fn render_on_this_day_modal(
                         SpanStyle::Link {
                             link_idx: l_idx, ..
                         } => {
-                            if is_selected && l_idx == active_link_idx {
+                            if is_selected && *l_idx == active_link_idx {
                                 Style::default()
                                     .fg(theme::VIOLET)
                                     .bold()
@@ -273,7 +363,7 @@ pub fn render_on_this_day_modal(
                         SpanStyle::BoldLink {
                             link_idx: l_idx, ..
                         } => {
-                            if is_selected && l_idx == active_link_idx {
+                            if is_selected && *l_idx == active_link_idx {
                                 Style::default()
                                     .fg(theme::VIOLET)
                                     .bold()
@@ -288,7 +378,7 @@ pub fn render_on_this_day_modal(
                             }
                         }
                     };
-                    spans.push(Span::styled(text, span_style));
+                    spans.push(Span::styled(text.clone(), span_style));
                 }
                 lines.push(Line::from(spans));
             }
