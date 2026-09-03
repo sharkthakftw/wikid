@@ -71,4 +71,50 @@ impl App {
                 .set_article_in_list("liked", "Liked", &title, is_liked);
         }
     }
+
+    pub fn maybe_mark_article_read(&mut self) {
+        let (should_mark, title, categories) = {
+            let pane = self.active_pane_mut();
+            if pane.has_marked_read {
+                return;
+            }
+            let crate::app::pane::PaneContent::ArticleText { title, parsed_doc, .. } = &pane.content else {
+                return;
+            };
+            let dwelled = pane
+                .opened_at
+                .is_some_and(|t| t.elapsed() >= std::time::Duration::from_secs(8));
+            let scrolled = pane.scroll_offset > 10;
+            if dwelled || scrolled {
+                pane.has_marked_read = true;
+                (true, title.clone(), parsed_doc.categories.clone())
+            } else {
+                (false, String::new(), Vec::new())
+            }
+        };
+        if should_mark {
+            self.feed.profile.seen_articles.insert(title);
+            self.feed.profile.record_engagement(&categories, 15);
+            self.feed.profile.save();
+        }
+    }
+
+    pub fn mark_active_article_read(&mut self) {
+        let (should_mark, title, categories) = {
+            let pane = self.active_pane_mut();
+            if pane.has_marked_read {
+                return;
+            }
+            let crate::app::pane::PaneContent::ArticleText { title, parsed_doc, .. } = &pane.content else {
+                return;
+            };
+            pane.has_marked_read = true;
+            (true, title.clone(), parsed_doc.categories.clone())
+        };
+        if should_mark {
+            self.feed.profile.seen_articles.insert(title);
+            self.feed.profile.record_engagement(&categories, 15);
+            self.feed.profile.save();
+        }
+    }
 }

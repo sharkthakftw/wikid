@@ -28,6 +28,7 @@ pub fn handle_save_to_list_mode(app: &mut App, key: KeyEvent) {
                 let target_title = app.lists_modal.target_title.clone();
                 app.saved_lists
                     .toggle_article_in_list(&list_id, &target_title);
+                app.mark_active_article_read();
             } else {
                 app.lists_modal.create_input.clear();
                 app.lists_modal.create_return_mode = InputMode::SaveToList;
@@ -56,6 +57,7 @@ pub fn handle_create_new_list_mode(app: &mut App, key: KeyEvent) {
                     let target_title = app.lists_modal.target_title.clone();
                     app.saved_lists
                         .toggle_article_in_list(&list_id, &target_title);
+                    app.mark_active_article_read();
                 }
             }
             app.input_mode = app.lists_modal.create_return_mode.clone();

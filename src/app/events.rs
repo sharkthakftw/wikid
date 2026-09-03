@@ -92,6 +92,8 @@ impl App {
                             parsed_doc: Box::new(parsed_doc),
                             last_render_options: render_opts,
                         };
+                        pane.opened_at = Some(std::time::Instant::now());
+                        pane.has_marked_read = false;
                         pane.selected_link_idx = initial_link_idx;
                         for img_url in image_urls {
                             self.send_fetch_image(img_url);

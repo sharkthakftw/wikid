@@ -56,6 +56,7 @@ impl App {
     }
 
     pub fn close_current_tab(&mut self) {
+        self.maybe_mark_article_read();
         if self.tabs.len() > 1 {
             let removed_tab = self.tabs.remove(self.active_tab_idx);
             for pane in removed_tab.panes {
@@ -91,6 +92,7 @@ impl App {
     }
 
     pub fn split_active_pane(&mut self, direction: SplitDirection) {
+        self.mark_active_article_read();
         let new_pane_id = self.next_pane_id;
         self.next_pane_id += 1;
 
@@ -106,6 +108,7 @@ impl App {
     }
 
     pub fn close_active_pane(&mut self) {
+        self.maybe_mark_article_read();
         if self.active_tab().panes.len() <= 1 {
             self.close_current_tab();
             return;

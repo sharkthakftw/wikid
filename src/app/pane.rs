@@ -96,6 +96,8 @@ pub struct Pane {
     pub intra_jump_back: Vec<usize>,
     pub intra_jump_forward: Vec<usize>,
     pub current_request_id: u64,
+    pub opened_at: Option<std::time::Instant>,
+    pub has_marked_read: bool,
 }
 
 impl Pane {
@@ -123,6 +125,8 @@ impl Pane {
             intra_jump_back: Vec::new(),
             intra_jump_forward: Vec::new(),
             current_request_id: 0,
+            opened_at: None,
+            has_marked_read: false,
         }
     }
 

@@ -280,6 +280,7 @@ impl App {
 
         if crate::clipboard::copy_to_clipboard(&target_url) {
             self.set_status_message(format!("copied article: {}", target_url));
+            self.mark_active_article_read();
         } else {
             self.set_status_message("failed to copy (no clipboard backend found)");
         }
