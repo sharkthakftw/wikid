@@ -182,6 +182,35 @@ fn category_matches(key: &str, cat: &str) -> bool {
     false
 }
 
+fn is_preset_category(cat: &str) -> bool {
+    for (display_name, label, subcats) in POPULAR_CATEGORIES {
+        if cat.eq_ignore_ascii_case(display_name) || cat.eq_ignore_ascii_case(label) {
+            return true;
+        }
+        for subcat in *subcats {
+            if cat.eq_ignore_ascii_case(subcat) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn is_maintenance_category(cat: &str) -> bool {
+    let lower = cat.to_lowercase();
+    lower.contains("articles")
+        || lower.contains("cs1")
+        || lower.contains("use dmy")
+        || lower.contains("use mdy")
+        || lower.contains("stub")
+        || lower.contains("disambiguation")
+        || lower.contains("wikidata")
+        || lower.contains("webarchive")
+        || lower.contains("pages with")
+        || lower.contains("wikipedia")
+        || lower.contains("hidden categories")
+}
+
 impl FeedProfile {
     pub fn score_for_categories(&self, categories: &[String]) -> i32 {
         let mut score = 0;
@@ -231,5 +260,26 @@ impl FeedProfile {
             }
         }
         subcats
+    }
+
+    pub fn get_organic_categories(&self) -> Vec<String> {
+        let mut organic: Vec<(&String, i32)> = self
+            .category_scores
+            .iter()
+            .filter(|(cat, &score)| {
+                score > 0
+                    && !is_preset_category(cat)
+                    && !is_maintenance_category(cat)
+                    && cat.len() >= 3
+            })
+            .map(|(cat, &score)| (cat, score))
+            .collect();
+
+        organic.sort_by_key(|a| std::cmp::Reverse(a.1));
+        organic
+            .into_iter()
+            .take(20)
+            .map(|(cat, _)| cat.clone())
+            .collect()
     }
 }

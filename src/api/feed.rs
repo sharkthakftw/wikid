@@ -85,7 +85,13 @@ fn fetch_category_items(
     timeout_secs: u64,
 ) -> Result<Vec<FeedItem>, String> {
     let url = "https://en.wikipedia.org/w/api.php";
-    let category_title = format!("Category:{}", category);
+    let category_title = if let Some(stripped) = category.strip_prefix("Category:") {
+        format!("Category:{}", stripped)
+    } else if let Some(stripped) = category.strip_prefix("category:") {
+        format!("Category:{}", stripped)
+    } else {
+        format!("Category:{}", category)
+    };
     let req = agent
         .get(url)
         .query("generator", "categorymembers")
@@ -107,13 +113,23 @@ fn fetch_random_items(agent: &ureq::Agent, timeout_secs: u64) -> Result<Vec<Feed
 
 pub fn fetch_feed_batch(agent: &ureq::Agent, timeout_secs: u64) -> Result<Vec<FeedItem>, String> {
     let profile = crate::feed::profile::FeedProfile::load();
-    let active_subcats = profile.get_active_subcategories();
 
     let mut chosen_cats = Vec::new();
-    if !active_subcats.is_empty() {
-        let mut available = active_subcats.clone();
-        crate::feed::algorithm::shuffle(&mut available);
-        chosen_cats = available.into_iter().take(3).collect();
+    let mut organic = profile.get_organic_categories();
+    if !organic.is_empty() {
+        crate::feed::algorithm::shuffle(&mut organic);
+        for cat in organic.into_iter().take(2) {
+            chosen_cats.push(cat);
+        }
+    }
+
+    let needed = 3usize.saturating_sub(chosen_cats.len());
+    let mut presets = profile.get_active_subcategories();
+    if !presets.is_empty() {
+        crate::feed::algorithm::shuffle(&mut presets);
+        for cat in presets.into_iter().take(needed) {
+            chosen_cats.push(cat);
+        }
     }
 
     let mut items = Vec::new();
