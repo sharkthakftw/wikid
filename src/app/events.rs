@@ -121,10 +121,14 @@ impl App {
             }
             NetworkEvent::FeedBatchLoaded { items } => {
                 self.feed.is_fetching = false;
-                for mut item in items {
+                let ranked_items = crate::feed::algorithm::rank_batch(items, &self.feed.profile);
+                for mut item in ranked_items {
                     item.is_liked = self.feed.profile.liked_articles.contains(&item.title)
                         || self.saved_lists.is_article_in_list("liked", &item.title);
                     self.feed.add_item(item);
+                }
+                if self.feed.items.is_empty() {
+                    self.maybe_fetch_feed_batch();
                 }
             }
             NetworkEvent::DailyFeedLoaded(feed) => {

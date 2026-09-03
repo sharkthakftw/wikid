@@ -54,7 +54,7 @@ pub fn choose_strategy() -> SelectionStrategy {
     }
 }
 
-pub fn select_best_item(mut candidates: Vec<FeedItem>, profile: &FeedProfile) -> Option<FeedItem> {
+pub fn select_best_item(candidates: &mut Vec<FeedItem>, profile: &FeedProfile) -> Option<FeedItem> {
     if candidates.is_empty() {
         return None;
     }
@@ -65,26 +65,53 @@ pub fn select_best_item(mut candidates: Vec<FeedItem>, profile: &FeedProfile) ->
             let idx = (rand_u64() as usize) % candidates.len();
             Some(candidates.swap_remove(idx))
         }
-        SelectionStrategy::TopCategory | SelectionStrategy::WeightedCategory => {
-            let mut best_idx = None;
+        SelectionStrategy::TopCategory => {
+            let mut best_idx = 0;
             let mut best_score = i32::MIN;
 
             for (idx, item) in candidates.iter().enumerate() {
-                if profile.seen_articles.contains(&item.title) {
-                    continue;
-                }
                 let score = profile.score_for_categories(&item.categories);
                 if score > best_score {
                     best_score = score;
-                    best_idx = Some(idx);
+                    best_idx = idx;
                 }
             }
 
-            if let Some(idx) = best_idx {
-                Some(candidates.swap_remove(idx))
-            } else {
-                candidates.into_iter().next()
+            Some(candidates.swap_remove(best_idx))
+        }
+        SelectionStrategy::WeightedCategory => {
+            let scores: Vec<u64> = candidates
+                .iter()
+                .map(|item| (profile.score_for_categories(&item.categories).max(0) as u64) + 1)
+                .collect();
+            let total_weight: u64 = scores.iter().sum();
+            if total_weight == 0 {
+                let idx = (rand_u64() as usize) % candidates.len();
+                return Some(candidates.swap_remove(idx));
             }
+            let mut roll = rand_u64() % total_weight;
+            let mut chosen_idx = 0;
+            for (idx, &w) in scores.iter().enumerate() {
+                if roll < w {
+                    chosen_idx = idx;
+                    break;
+                }
+                roll -= w;
+            }
+            Some(candidates.swap_remove(chosen_idx))
         }
     }
+}
+
+pub fn rank_batch(mut candidates: Vec<FeedItem>, profile: &FeedProfile) -> Vec<FeedItem> {
+    candidates.retain(|item| !profile.seen_articles.contains(&item.title));
+    let mut ranked = Vec::with_capacity(candidates.len());
+    while !candidates.is_empty() {
+        if let Some(item) = select_best_item(&mut candidates, profile) {
+            ranked.push(item);
+        } else {
+            break;
+        }
+    }
+    ranked
 }
