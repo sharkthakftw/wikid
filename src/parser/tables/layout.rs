@@ -76,7 +76,7 @@ pub fn compute_column_widths(grid: &TableGrid, max_width: usize) -> Vec<usize> {
 
 pub fn compute_row_heights(
     grid: &TableGrid,
-    origin_lines: &[Vec<Vec<Vec<Span<'static>>>>],
+    origin_lines: &[Vec<Vec<Span<'static>>>],
 ) -> Vec<usize> {
     let num_rows = grid.num_rows;
     let num_cols = grid.num_cols;
@@ -87,7 +87,7 @@ pub fn compute_row_heights(
         for c in 0..num_cols {
             if let CellEntry::Origin { rowspan, .. } = &grid.cells[r][c] {
                 if *rowspan == 1 {
-                    max_h = max_h.max(origin_lines[r][c].len());
+                    max_h = max_h.max(origin_lines[r * num_cols + c].len());
                 }
             }
         }
@@ -98,7 +98,7 @@ pub fn compute_row_heights(
         for c in 0..num_cols {
             if let CellEntry::Origin { rowspan, .. } = &grid.cells[r][c] {
                 if *rowspan > 1 {
-                    let needed = origin_lines[r][c].len();
+                    let needed = origin_lines[r * num_cols + c].len();
                     let current_total: usize =
                         (0..*rowspan).filter_map(|dr| row_heights.get(r + dr)).sum();
                     if needed > current_total {
