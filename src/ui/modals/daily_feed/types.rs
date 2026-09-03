@@ -50,6 +50,7 @@ pub struct DailyFeedModalState {
     pub cursor_idx: usize,
     pub link_idx: usize,
     pub otd_tab: OnThisDayTab,
+    pub scroll: usize,
     pub cache: std::cell::RefCell<DailyFeedCache>,
 }
 
@@ -60,6 +61,7 @@ impl Default for DailyFeedModalState {
             cursor_idx: 0,
             link_idx: 0,
             otd_tab: OnThisDayTab::Events,
+            scroll: 0,
             cache: std::cell::RefCell::new(DailyFeedCache::default()),
         }
     }

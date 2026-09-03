@@ -12,7 +12,7 @@ use ratatui::{
 
 pub fn render_most_read_modal(
     f: &mut Frame,
-    _app: &App,
+    app: &App,
     entries: &[FeedEntry],
     modal_area: Rect,
     modal_block: Block,
@@ -20,8 +20,12 @@ pub fn render_most_read_modal(
 ) {
     let total = entries.len();
     let inner_height = modal_area.height.saturating_sub(2) as usize;
-    let scroll =
-        crate::ui::modals::utils::compute_centered_scroll(selected_idx, inner_height, total);
+    let scroll = app
+        .daily_feed_modal
+        .as_ref()
+        .map(|m| m.scroll)
+        .unwrap_or(0)
+        .min(total.saturating_sub(inner_height));
 
     let mut lines = Vec::new();
     if entries.is_empty() {

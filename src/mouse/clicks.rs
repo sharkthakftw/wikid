@@ -58,7 +58,7 @@ fn handle_modal_left_click(
                 || row < area.y
                 || row >= area.y + area.height
             {
-                app.input_mode = InputMode::Normal;
+                app.close_daily_feed_modal();
                 return true;
             }
 
@@ -70,7 +70,19 @@ fn handle_modal_left_click(
                         modal.otd_tab = tab;
                         modal.cursor_idx = 0;
                         modal.link_idx = 0;
+                        modal.scroll = 0;
                     }
+                    return true;
+                }
+            }
+
+            if let Some(target) = crate::ui::modals::get_daily_feed_link_at(app, col, row, size) {
+                if !target.is_empty() {
+                    app.close_daily_feed_modal();
+                    if alt {
+                        app.new_tab();
+                    }
+                    app.open_article(&target);
                     return true;
                 }
             }
@@ -549,6 +561,19 @@ fn handle_workspace_left_click(
 }
 
 pub fn handle_mouse_move(app: &mut App, col: u16, row: u16, term_width: u16, term_height: u16) {
+    if app.input_mode == InputMode::DailyFeedModal {
+        let size = Rect::new(0, 0, term_width, term_height);
+        if let Some((item_idx, l_idx, _)) =
+            crate::ui::modals::get_daily_feed_item_at(app, col, row, size)
+        {
+            if let Some(modal) = &mut app.daily_feed_modal {
+                modal.cursor_idx = item_idx;
+                modal.link_idx = l_idx;
+            }
+        }
+        return;
+    }
+
     if app.input_mode != InputMode::Normal {
         return;
     }

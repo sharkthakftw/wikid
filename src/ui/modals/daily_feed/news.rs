@@ -43,6 +43,7 @@ pub fn render_news_modal(
     };
 
     let mut lines = Vec::new();
+    let mut line_offsets = Vec::new();
     if feed.news.is_empty() {
         lines.push(Line::from(vec![Span::styled(
             "  no news stories available.",
@@ -109,6 +110,7 @@ pub fn render_news_modal(
         };
 
         for cached_item in &cache_ref.news_wrapped {
+            line_offsets.push(lines.len());
             let is_selected = row_counter == selected_idx;
             let active_link_idx = if is_selected {
                 link_idx.min(cached_item.links.len().saturating_sub(1))
@@ -191,6 +193,7 @@ pub fn render_news_modal(
         }
 
         if !feed.ongoing.is_empty() {
+            line_offsets.push(lines.len());
             let is_selected = row_counter == selected_idx;
             let (prefix, prefix_style) = if is_selected {
                 (" ▶ ", Style::default().fg(theme::BLUE).bold())
@@ -257,6 +260,7 @@ pub fn render_news_modal(
         }
 
         if !feed.recent_deaths.is_empty() {
+            line_offsets.push(lines.len());
             let is_selected = row_counter == selected_idx;
             let (prefix, prefix_style) = if is_selected {
                 (" ▶ ", Style::default().fg(theme::BLUE).bold())
@@ -296,6 +300,17 @@ pub fn render_news_modal(
         }
     }
 
-    let p = Paragraph::new(lines).block(modal_block);
+    let inner_height = modal_area.height.saturating_sub(2) as usize;
+    let total_lines = lines.len();
+    let scroll = app
+        .daily_feed_modal
+        .as_ref()
+        .map(|m| m.scroll)
+        .unwrap_or(0)
+        .min(total_lines.saturating_sub(inner_height));
+
+    let p = Paragraph::new(lines)
+        .block(modal_block)
+        .scroll((scroll as u16, 0));
     f.render_widget(p, modal_area);
 }

@@ -86,19 +86,43 @@ pub fn handle_daily_feed_mode(app: &mut App, key: KeyEvent) {
         }
         KeyCode::Char('j') | KeyCode::Down => {
             if total > 0 {
+                let kind = state.kind;
                 if let Some(modal) = &mut app.daily_feed_modal {
                     if modal.cursor_idx + 1 < total {
                         modal.cursor_idx += 1;
                         modal.link_idx = 0;
                     }
                 }
+                let target_line = crate::ui::modals::get_modal_item_line_offset(
+                    app,
+                    kind,
+                    app.daily_feed_modal.as_ref().map(|m| m.cursor_idx).unwrap_or(0),
+                );
+                if let Some(modal) = &mut app.daily_feed_modal {
+                    if target_line >= modal.scroll + 12 {
+                        modal.scroll = target_line.saturating_sub(8);
+                    }
+                }
             }
         }
         KeyCode::Char('k') | KeyCode::Up => {
-            if let Some(modal) = &mut app.daily_feed_modal {
-                if modal.cursor_idx > 0 {
-                    modal.cursor_idx -= 1;
-                    modal.link_idx = 0;
+            if total > 0 {
+                let kind = state.kind;
+                if let Some(modal) = &mut app.daily_feed_modal {
+                    if modal.cursor_idx > 0 {
+                        modal.cursor_idx -= 1;
+                        modal.link_idx = 0;
+                    }
+                }
+                let target_line = crate::ui::modals::get_modal_item_line_offset(
+                    app,
+                    kind,
+                    app.daily_feed_modal.as_ref().map(|m| m.cursor_idx).unwrap_or(0),
+                );
+                if let Some(modal) = &mut app.daily_feed_modal {
+                    if target_line < modal.scroll {
+                        modal.scroll = target_line;
+                    }
                 }
             }
         }
@@ -106,13 +130,23 @@ pub fn handle_daily_feed_mode(app: &mut App, key: KeyEvent) {
             if let Some(modal) = &mut app.daily_feed_modal {
                 modal.cursor_idx = 0;
                 modal.link_idx = 0;
+                modal.scroll = 0;
             }
         }
         KeyCode::Char('G') | KeyCode::End => {
             if total > 0 {
+                let kind = state.kind;
                 if let Some(modal) = &mut app.daily_feed_modal {
                     modal.cursor_idx = total.saturating_sub(1);
                     modal.link_idx = 0;
+                }
+                let target_line = crate::ui::modals::get_modal_item_line_offset(
+                    app,
+                    kind,
+                    app.daily_feed_modal.as_ref().map(|m| m.cursor_idx).unwrap_or(0),
+                );
+                if let Some(modal) = &mut app.daily_feed_modal {
+                    modal.scroll = target_line.saturating_sub(6);
                 }
             }
         }
@@ -200,6 +234,7 @@ pub fn handle_daily_feed_mode(app: &mut App, key: KeyEvent) {
                 modal.otd_tab = OnThisDayTab::Events;
                 modal.cursor_idx = 0;
                 modal.link_idx = 0;
+                modal.scroll = 0;
             }
         }
         KeyCode::Char('2') if state.kind == DailyFeedKind::OnThisDay => {
@@ -207,6 +242,7 @@ pub fn handle_daily_feed_mode(app: &mut App, key: KeyEvent) {
                 modal.otd_tab = OnThisDayTab::Births;
                 modal.cursor_idx = 0;
                 modal.link_idx = 0;
+                modal.scroll = 0;
             }
         }
         KeyCode::Char('3') if state.kind == DailyFeedKind::OnThisDay => {
@@ -214,6 +250,7 @@ pub fn handle_daily_feed_mode(app: &mut App, key: KeyEvent) {
                 modal.otd_tab = OnThisDayTab::Deaths;
                 modal.cursor_idx = 0;
                 modal.link_idx = 0;
+                modal.scroll = 0;
             }
         }
         KeyCode::Char('4') if state.kind == DailyFeedKind::OnThisDay => {
@@ -221,6 +258,7 @@ pub fn handle_daily_feed_mode(app: &mut App, key: KeyEvent) {
                 modal.otd_tab = OnThisDayTab::Holidays;
                 modal.cursor_idx = 0;
                 modal.link_idx = 0;
+                modal.scroll = 0;
             }
         }
         KeyCode::Char(']') if state.kind == DailyFeedKind::OnThisDay => {
@@ -233,6 +271,7 @@ pub fn handle_daily_feed_mode(app: &mut App, key: KeyEvent) {
                 };
                 modal.cursor_idx = 0;
                 modal.link_idx = 0;
+                modal.scroll = 0;
             }
         }
         KeyCode::Char('[') if state.kind == DailyFeedKind::OnThisDay => {
@@ -245,6 +284,7 @@ pub fn handle_daily_feed_mode(app: &mut App, key: KeyEvent) {
                 };
                 modal.cursor_idx = 0;
                 modal.link_idx = 0;
+                modal.scroll = 0;
             }
         }
         _ => {}

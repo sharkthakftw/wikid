@@ -157,6 +157,16 @@ fn handle_modal_scroll(app: &mut App, delta: i32, col: u16, row: u16, size: Rect
             }
             true
         }
+        InputMode::DailyFeedModal => {
+            if let Some(modal) = &mut app.daily_feed_modal {
+                if delta < 0 {
+                    modal.scroll = modal.scroll.saturating_sub(2);
+                } else {
+                    modal.scroll = modal.scroll.saturating_add(2);
+                }
+            }
+            true
+        }
         _ => false,
     }
 }

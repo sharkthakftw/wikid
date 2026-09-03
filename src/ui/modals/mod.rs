@@ -13,9 +13,10 @@ pub use categories::{
     compute_categories_modal_areas, get_category_item_at, render_categories_modal,
 };
 pub use daily_feed::{
-    compute_daily_feed_modal_area, get_feed_entries, get_ongoing_links, get_otd_tab_at,
-    get_recent_deaths_links, parse_onthisday_event, parse_story_html, render_daily_feed_modal,
-    DailyFeedCache, DailyFeedKind, DailyFeedModalState, FeedEntry, OnThisDayTab,
+    compute_daily_feed_modal_area, get_daily_feed_item_at, get_daily_feed_link_at, get_feed_entries,
+    get_modal_item_line_offset, get_ongoing_links, get_otd_tab_at, get_recent_deaths_links,
+    parse_onthisday_event, parse_story_html, render_daily_feed_modal, DailyFeedCache, DailyFeedKind,
+    DailyFeedModalState, FeedEntry, OnThisDayTab,
 };
 pub use help::{compute_help_modal_area, render_help_modal};
 pub use lists::{

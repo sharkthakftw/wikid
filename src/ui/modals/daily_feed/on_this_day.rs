@@ -388,14 +388,12 @@ pub fn render_on_this_day_modal(
 
     let inner_height = modal_area.height.saturating_sub(2) as usize;
     let total_lines = lines.len();
-    let scroll = if total_lines <= inner_height || inner_height == 0 {
-        0
-    } else {
-        let target_line = line_offsets.get(selected_idx).copied().unwrap_or(0);
-        target_line
-            .saturating_sub(inner_height / 3)
-            .min(total_lines.saturating_sub(inner_height))
-    };
+    let scroll = app
+        .daily_feed_modal
+        .as_ref()
+        .map(|m| m.scroll)
+        .unwrap_or(0)
+        .min(total_lines.saturating_sub(inner_height));
 
     let p = Paragraph::new(lines)
         .block(modal_block)
