@@ -1,27 +1,18 @@
 use crate::app::App;
 use crate::theme;
-use crate::ui::modals::utils::{centered_rect, create_modal_block, create_selectable_line};
+use crate::ui::modals::utils::{
+    compute_two_column_modal_areas, create_modal_block, create_selectable_line,
+    render_selectable_list_column,
+};
 use ratatui::{
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::Rect,
     style::{Style, Stylize},
     text::{Line, Span},
-    widgets::Paragraph,
     Frame,
 };
 
 pub fn compute_saved_lists_viewer_areas(size: Rect) -> (Rect, Rect, Rect) {
-    let container_area = centered_rect(80, 80, size);
-    let inner_area = Rect::new(
-        container_area.x + 1,
-        container_area.y + 1,
-        container_area.width.saturating_sub(2),
-        container_area.height.saturating_sub(2),
-    );
-    let chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(35), Constraint::Percentage(65)])
-        .split(inner_area);
-    (container_area, chunks[0], chunks[1])
+    compute_two_column_modal_areas(80, 80, 35, size)
 }
 
 pub fn compute_list_viewer_scroll(
@@ -113,16 +104,14 @@ pub fn render_saved_lists_viewer_modal(f: &mut Frame, app: &App, size: Rect) {
         }
     }
 
-    let left_visible_rows = (left_area.height.saturating_sub(2)) as usize;
-    let left_scroll = compute_list_viewer_scroll(
+    render_selectable_list_column(
+        f,
+        left_area,
+        left_block,
+        list_lines,
         app.lists_modal.viewer_list_idx,
-        left_visible_rows,
         app.saved_lists.lists.len(),
     );
-    let left_p = Paragraph::new(list_lines)
-        .block(left_block)
-        .scroll((left_scroll as u16, 0));
-    f.render_widget(left_p, left_area);
 
     let right_border_color = if app.lists_modal.viewer_focus_right {
         theme::YELLOW
@@ -186,14 +175,12 @@ pub fn render_saved_lists_viewer_modal(f: &mut Frame, app: &App, size: Rect) {
         }
     }
 
-    let right_visible_rows = (right_area.height.saturating_sub(2)) as usize;
-    let right_scroll = compute_list_viewer_scroll(
+    render_selectable_list_column(
+        f,
+        right_area,
+        right_block,
+        article_lines,
         app.lists_modal.viewer_article_idx,
-        right_visible_rows,
         right_total,
     );
-    let right_p = Paragraph::new(article_lines)
-        .block(right_block)
-        .scroll((right_scroll as u16, 0));
-    f.render_widget(right_p, right_area);
 }

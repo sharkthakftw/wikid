@@ -19,6 +19,45 @@ pub fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
     }
 }
 
+pub fn compute_two_column_modal_areas(
+    percent_x: u16,
+    percent_y: u16,
+    left_percent: u16,
+    size: Rect,
+) -> (Rect, Rect, Rect) {
+    let container_area = centered_rect(percent_x, percent_y, size);
+    let inner_area = Rect::new(
+        container_area.x + 1,
+        container_area.y + 1,
+        container_area.width.saturating_sub(2),
+        container_area.height.saturating_sub(2),
+    );
+    let chunks = ratatui::layout::Layout::default()
+        .direction(ratatui::layout::Direction::Horizontal)
+        .constraints([
+            ratatui::layout::Constraint::Percentage(left_percent),
+            ratatui::layout::Constraint::Percentage(100u16.saturating_sub(left_percent)),
+        ])
+        .split(inner_area);
+    (container_area, chunks[0], chunks[1])
+}
+
+pub fn render_selectable_list_column(
+    f: &mut ratatui::Frame,
+    area: Rect,
+    block: Block<'static>,
+    lines: Vec<ratatui::text::Line<'static>>,
+    cursor_idx: usize,
+    total_items: usize,
+) {
+    let visible_rows = (area.height.saturating_sub(2)) as usize;
+    let scroll = compute_centered_scroll(cursor_idx, visible_rows, total_items);
+    let p = ratatui::widgets::Paragraph::new(lines)
+        .block(block)
+        .scroll((scroll as u16, 0));
+    f.render_widget(p, area);
+}
+
 pub fn compute_centered_scroll(
     cursor_idx: usize,
     visible_rows: usize,
