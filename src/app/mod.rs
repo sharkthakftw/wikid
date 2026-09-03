@@ -74,6 +74,12 @@ impl App {
         } else {
             None
         };
+        let cache_lifetime = config.network.cache_lifetime;
+        if cache_lifetime > 0 {
+            std::thread::spawn(move || {
+                crate::cache::evict_expired_cache(cache_lifetime);
+            });
+        }
         let quote_idx = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_secs() as usize)

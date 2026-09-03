@@ -75,6 +75,8 @@ pub fn get_cached_article(title: &str, lifetime_hours: u64) -> Option<String> {
                             return Some(content);
                         }
                     }
+                } else {
+                    let _ = std::fs::remove_file(&path);
                 }
             }
         }
