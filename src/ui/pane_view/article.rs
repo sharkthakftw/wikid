@@ -120,7 +120,7 @@ pub fn render_article_pane(
     let mut rendered_lines: Vec<Line<'_>> = Vec::with_capacity(view_len);
 
     let mut link_ptr = first_link_idx;
-    let query_len = pane.search.query.len();
+    let query_len = pane.search.query.to_lowercase().len();
     let mut match_ptr = if has_search_matches {
         pane.search
             .matches
@@ -351,7 +351,17 @@ pub fn render_article_pane(
     }
 }
 
-pub fn build_search_highlighted_spans<'a>(
+pub fn clamp_to_char_boundary(s: &str, mut idx: usize) -> usize {
+    if idx >= s.len() {
+        return s.len();
+    }
+    while idx > 0 && !s.is_char_boundary(idx) {
+        idx -= 1;
+    }
+    idx
+}
+
+fn build_search_highlighted_spans<'a>(
     spans: &[Span<'a>],
     line_matches: &[(usize, usize, bool)],
 ) -> Vec<Span<'a>> {
@@ -375,8 +385,12 @@ pub fn build_search_highlighted_spans<'a>(
                 continue;
             }
 
-            let rel_match_start = m_start.saturating_sub(span_start).max(text_cursor);
-            let rel_match_end = (m_end.saturating_sub(span_start)).min(span_len);
+            let raw_rel_start = m_start.saturating_sub(span_start).max(text_cursor);
+            let raw_rel_end = (m_end.saturating_sub(span_start)).min(span_len);
+
+            let rel_match_start = clamp_to_char_boundary(text, raw_rel_start);
+            let rel_match_end = clamp_to_char_boundary(text, raw_rel_end);
+            text_cursor = clamp_to_char_boundary(text, text_cursor);
 
             if rel_match_start > text_cursor && rel_match_start <= span_len {
                 let unmatch_span = match &span.content {
