@@ -1,4 +1,7 @@
 use crate::feed::profile::FeedProfile;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+static RNG_STATE: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug, Clone)]
 pub struct FeedItem {
@@ -16,24 +19,26 @@ pub enum SelectionStrategy {
 }
 
 pub fn rand_u64() -> u64 {
-    let nanos = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_nanos())
-        .unwrap_or(1234567) as u64;
-    let mut x = nanos ^ 0x517cc1b727220a95;
-    x ^= x >> 12;
-    x ^= x << 25;
-    x ^= x >> 27;
-    x.wrapping_mul(0x2545f4914f6cdd1d)
+    let prev = RNG_STATE.fetch_add(0x9e3779b97f4a7c15, Ordering::Relaxed);
+    let mut z = if prev == 0 {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(1234567) as u64;
+        let seed = (nanos ^ 0x517cc1b727220a95).wrapping_add(0x9e3779b97f4a7c15);
+        RNG_STATE.store(seed.wrapping_add(0x9e3779b97f4a7c15), Ordering::Relaxed);
+        seed
+    } else {
+        prev
+    };
+    z = (z ^ (z >> 30)).wrapping_mul(0xbf58476d1ce4e5b9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94d049bb133111eb);
+    z ^ (z >> 31)
 }
 
 pub fn shuffle<T>(slice: &mut [T]) {
-    let mut rng = rand_u64();
     for i in (1..slice.len()).rev() {
-        rng ^= rng >> 12;
-        rng ^= rng << 25;
-        rng ^= rng >> 27;
-        let j = (rng.wrapping_mul(0x2545f4914f6cdd1d) as usize) % (i + 1);
+        let j = (rand_u64() as usize) % (i + 1);
         slice.swap(i, j);
     }
 }
