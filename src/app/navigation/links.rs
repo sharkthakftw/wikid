@@ -94,7 +94,7 @@ impl App {
                         })
                         .or_else(|| {
                             parsed_doc.links.iter().find_map(|l| {
-                                if l.title == target || l.title == format!("#{}", anchor) {
+                                if l.title == target || l.title == anchor {
                                     l.span_indices.first().map(|(line, _)| *line)
                                 } else {
                                     None
