@@ -31,7 +31,7 @@ fn parse_feed_items(query: WikiFeedQuery) -> Vec<FeedItem> {
             if let Some(title) = page.title {
                 let short_description = page.description.filter(|d| !d.trim().is_empty());
                 let snippet = page.extract.unwrap_or_default().trim().to_string();
-                let mut categories: Vec<String> = page
+                let categories: Vec<String> = page
                     .categories
                     .unwrap_or_default()
                     .into_iter()
@@ -51,15 +51,6 @@ fn parse_feed_items(query: WikiFeedQuery) -> Vec<FeedItem> {
                             && !lower.contains("tracking")
                     })
                     .collect();
-
-                if categories.is_empty() {
-                    categories = title
-                        .split(|c: char| !c.is_alphanumeric())
-                        .filter(|w| w.len() > 3)
-                        .map(|w| w.to_lowercase())
-                        .take(3)
-                        .collect();
-                }
 
                 items.push(FeedItem {
                     title,
