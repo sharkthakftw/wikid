@@ -29,9 +29,18 @@ fn parse_feed_items(query: WikiFeedQuery) -> Vec<FeedItem> {
     if let Some(pages) = query.pages {
         for (_, page) in pages {
             if let Some(title) = page.title {
+                let lower_title = title.to_lowercase();
+                if lower_title.starts_with("portal:")
+                    || lower_title.starts_with("category:")
+                    || lower_title.starts_with("wikipedia:")
+                    || lower_title.starts_with("template:")
+                    || lower_title.starts_with("help:")
+                {
+                    continue;
+                }
                 let short_description = page.description.filter(|d| !d.trim().is_empty());
                 let snippet = page.extract.unwrap_or_default().trim().to_string();
-                let mut categories: Vec<String> = page
+                let categories: Vec<String> = page
                     .categories
                     .unwrap_or_default()
                     .into_iter()
@@ -51,15 +60,6 @@ fn parse_feed_items(query: WikiFeedQuery) -> Vec<FeedItem> {
                             && !lower.contains("tracking")
                     })
                     .collect();
-
-                if categories.is_empty() {
-                    categories = title
-                        .split(|c: char| !c.is_alphanumeric())
-                        .filter(|w| w.len() > 3)
-                        .map(|w| w.to_lowercase())
-                        .take(3)
-                        .collect();
-                }
 
                 items.push(FeedItem {
                     title,
@@ -94,13 +94,20 @@ fn fetch_category_items(
     timeout_secs: u64,
 ) -> Result<Vec<FeedItem>, String> {
     let url = "https://en.wikipedia.org/w/api.php";
-    let category_title = format!("Category:{}", category);
+    let category_title = if let Some(stripped) = category.strip_prefix("Category:") {
+        format!("Category:{}", stripped)
+    } else if let Some(stripped) = category.strip_prefix("category:") {
+        format!("Category:{}", stripped)
+    } else {
+        format!("Category:{}", category)
+    };
     let req = agent
         .get(url)
         .query("generator", "categorymembers")
         .query("gcmtitle", &category_title)
         .query("gcmtype", "page")
-        .query("gcmlimit", "2");
+        .query("gcmnamespace", "0")
+        .query("gcmlimit", "8");
     query_feed_items(req, timeout_secs)
 }
 
@@ -110,19 +117,29 @@ fn fetch_random_items(agent: &ureq::Agent, timeout_secs: u64) -> Result<Vec<Feed
         .get(url)
         .query("generator", "random")
         .query("grnnamespace", "0")
-        .query("grnlimit", "3");
+        .query("grnlimit", "6");
     query_feed_items(req, timeout_secs)
 }
 
 pub fn fetch_feed_batch(agent: &ureq::Agent, timeout_secs: u64) -> Result<Vec<FeedItem>, String> {
     let profile = crate::feed::profile::FeedProfile::load();
-    let active_subcats = profile.get_active_subcategories();
 
     let mut chosen_cats = Vec::new();
-    if !active_subcats.is_empty() {
-        let mut available = active_subcats.clone();
-        crate::feed::algorithm::shuffle(&mut available);
-        chosen_cats = available.into_iter().take(3).collect();
+    let mut organic = profile.get_organic_categories();
+    if !organic.is_empty() {
+        crate::feed::algorithm::shuffle(&mut organic);
+        for cat in organic.into_iter().take(2) {
+            chosen_cats.push(cat);
+        }
+    }
+
+    let needed = 3usize.saturating_sub(chosen_cats.len());
+    let mut presets = profile.get_active_subcategories();
+    if !presets.is_empty() {
+        crate::feed::algorithm::shuffle(&mut presets);
+        for cat in presets.into_iter().take(needed) {
+            chosen_cats.push(cat);
+        }
     }
 
     let mut items = Vec::new();
@@ -140,9 +157,14 @@ pub fn fetch_feed_batch(agent: &ureq::Agent, timeout_secs: u64) -> Result<Vec<Fe
         fetch_random_items(&agent_rand, timeout_secs)
     }));
 
+    let mut seen_titles = std::collections::HashSet::new();
     for handle in handles {
         if let Ok(Ok(batch)) = handle.join() {
-            items.extend(batch);
+            for item in batch {
+                if seen_titles.insert(item.title.clone()) {
+                    items.push(item);
+                }
+            }
         }
     }
 

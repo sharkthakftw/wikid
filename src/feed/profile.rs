@@ -53,7 +53,7 @@ impl FeedProfile {
         if let Some(mut profile) = loaded {
             let mut normalized = HashMap::with_capacity(profile.category_scores.len());
             for (k, v) in profile.category_scores {
-                normalized.insert(k.to_lowercase(), v);
+                normalized.insert(k.to_lowercase(), v.max(0));
             }
             profile.category_scores = normalized;
             return profile;
@@ -82,7 +82,7 @@ impl FeedProfile {
         for cat in categories {
             let cat_lower = cat.to_lowercase();
             let current = self.category_scores.entry(cat_lower).or_insert(0);
-            *current += points;
+            *current = (*current + points).max(0);
         }
     }
 
@@ -104,34 +104,121 @@ impl FeedProfile {
         is_liked
     }
 
-    pub fn mark_seen(&mut self, title: &str, categories: &[String]) {
+    pub fn mark_seen(&mut self, title: &str) {
         if !self.seen_articles.contains(title) {
             self.seen_articles.insert(title.to_string());
             self.total_seen += 1;
-            self.record_engagement(categories, -5);
             self.save();
         }
     }
+}
 
+fn stem_word(w: &str) -> &str {
+    if let Some(s) = w.strip_suffix("ies") {
+        s
+    } else if let Some(s) = w.strip_suffix("IES") {
+        s
+    } else if let Some(s) = w.strip_suffix("es") {
+        s
+    } else if let Some(s) = w.strip_suffix("ES") {
+        s
+    } else if let Some(s) = w.strip_suffix(|c| c == 's' || c == 'S') {
+        s
+    } else if let Some(s) = w.strip_suffix(|c| c == 'y' || c == 'Y') {
+        s
+    } else {
+        w
+    }
+}
+
+fn category_matches(key: &str, cat: &str) -> bool {
+    if key.eq_ignore_ascii_case(cat) {
+        return true;
+    }
+    if key.contains(' ') {
+        let key_lower = key.to_lowercase();
+        let cat_lower = cat.to_lowercase();
+        if let Some(pos) = cat_lower.find(&key_lower) {
+            let before = if pos == 0 {
+                true
+            } else {
+                !cat_lower[..pos].chars().next_back().is_some_and(|c| c.is_alphanumeric())
+            };
+            let end = pos + key_lower.len();
+            let after = if end >= cat_lower.len() {
+                true
+            } else {
+                !cat_lower[end..].chars().next().is_some_and(|c| c.is_alphanumeric())
+            };
+            if before && after {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    let key_stem = stem_word(key);
+    for word in cat.split(|c: char| !c.is_alphanumeric()) {
+        if word.is_empty() {
+            continue;
+        }
+        if word.eq_ignore_ascii_case(key) {
+            return true;
+        }
+        let word_stem = stem_word(word);
+        if word_stem.len() >= 3 && key_stem.len() >= 3 && word_stem.eq_ignore_ascii_case(key_stem) {
+            return true;
+        }
+        let w_char_count = word.chars().count();
+        let k_char_count = key.chars().count();
+        if w_char_count >= 6 && k_char_count >= 6 {
+            let w_idx = word.char_indices().nth(6).map_or(word.len(), |(i, _)| i);
+            let k_idx = key.char_indices().nth(6).map_or(key.len(), |(i, _)| i);
+            if word[..w_idx].eq_ignore_ascii_case(&key[..k_idx]) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn is_preset_category(cat: &str) -> bool {
+    for (display_name, label, subcats) in POPULAR_CATEGORIES {
+        if cat.eq_ignore_ascii_case(display_name) || cat.eq_ignore_ascii_case(label) {
+            return true;
+        }
+        for subcat in *subcats {
+            if cat.eq_ignore_ascii_case(subcat) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn is_maintenance_category(cat: &str) -> bool {
+    let lower = cat.to_lowercase();
+    lower.contains("articles")
+        || lower.contains("cs1")
+        || lower.contains("use dmy")
+        || lower.contains("use mdy")
+        || lower.contains("stub")
+        || lower.contains("disambiguation")
+        || lower.contains("wikidata")
+        || lower.contains("webarchive")
+        || lower.contains("pages with")
+        || lower.contains("wikipedia")
+        || lower.contains("hidden categories")
+}
+
+impl FeedProfile {
     pub fn score_for_categories(&self, categories: &[String]) -> i32 {
         let mut score = 0;
-        let mut buf = [0u8; 64];
         for cat in categories {
-            let cat_score = if cat.len() <= buf.len() && cat.is_ascii() {
-                let bytes = cat.as_bytes();
-                for (i, &b) in bytes.iter().enumerate() {
-                    buf[i] = b.to_ascii_lowercase();
+            for (key, &cat_score) in &self.category_scores {
+                if cat_score > 0 && category_matches(key, cat) {
+                    score += cat_score;
                 }
-                let lower_str = std::str::from_utf8(&buf[..bytes.len()]).unwrap_or("");
-                self.category_scores.get(lower_str).copied()
-            } else {
-                self.category_scores
-                    .iter()
-                    .find(|(k, _)| k.eq_ignore_ascii_case(cat))
-                    .map(|(_, &s)| s)
-            };
-            if let Some(s) = cat_score {
-                score += s;
             }
         }
         score
@@ -173,5 +260,26 @@ impl FeedProfile {
             }
         }
         subcats
+    }
+
+    pub fn get_organic_categories(&self) -> Vec<String> {
+        let mut organic: Vec<(&String, i32)> = self
+            .category_scores
+            .iter()
+            .filter(|(cat, &score)| {
+                score > 0
+                    && !is_preset_category(cat)
+                    && !is_maintenance_category(cat)
+                    && cat.len() >= 3
+            })
+            .map(|(cat, &score)| (cat, score))
+            .collect();
+
+        organic.sort_by_key(|a| std::cmp::Reverse(a.1));
+        organic
+            .into_iter()
+            .take(20)
+            .map(|(cat, _)| cat.clone())
+            .collect()
     }
 }

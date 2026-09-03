@@ -53,7 +53,8 @@ impl App {
 
     pub fn record_recent_article(&mut self, title: &str) {
         let clean = title.trim().replace('_', " ");
-        if clean.is_empty() || clean.to_lowercase().starts_with("category:") {
+        let lower = clean.to_lowercase();
+        if clean.is_empty() || lower.starts_with("category:") || lower.starts_with("portal:") {
             return;
         }
         let now = std::time::SystemTime::now()
@@ -79,7 +80,10 @@ impl App {
         let filtered: Vec<String> = self
             .recent_articles
             .iter()
-            .filter(|e| !e.title.to_lowercase().starts_with("category:"))
+            .filter(|e| {
+                let lower = e.title.to_lowercase();
+                !lower.starts_with("category:") && !lower.starts_with("portal:")
+            })
             .map(|e| e.title.clone())
             .collect();
 
@@ -91,7 +95,11 @@ impl App {
         let mut list = Vec::with_capacity(10);
         for l in &self.saved_lists.lists {
             for a in l.articles.iter().rev() {
-                if !a.to_lowercase().starts_with("category:") && seen.insert(a.as_str()) {
+                let lower = a.to_lowercase();
+                if !lower.starts_with("category:")
+                    && !lower.starts_with("portal:")
+                    && seen.insert(a.as_str())
+                {
                     list.push(a.clone());
                     if list.len() >= 10 {
                         return list;
@@ -106,7 +114,10 @@ impl App {
         let filtered: Vec<(String, Option<u64>)> = self
             .recent_articles
             .iter()
-            .filter(|e| !e.title.to_lowercase().starts_with("category:"))
+            .filter(|e| {
+                let lower = e.title.to_lowercase();
+                !lower.starts_with("category:") && !lower.starts_with("portal:")
+            })
             .map(|e| {
                 let ts = if e.timestamp > 0 {
                     Some(e.timestamp)
@@ -125,7 +136,11 @@ impl App {
         let mut list = Vec::with_capacity(10);
         for l in &self.saved_lists.lists {
             for a in l.articles.iter().rev() {
-                if !a.to_lowercase().starts_with("category:") && seen.insert(a.as_str()) {
+                let lower = a.to_lowercase();
+                if !lower.starts_with("category:")
+                    && !lower.starts_with("portal:")
+                    && seen.insert(a.as_str())
+                {
                     list.push((a.clone(), None));
                     if list.len() >= 10 {
                         return list;

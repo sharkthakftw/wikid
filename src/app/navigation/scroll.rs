@@ -12,6 +12,7 @@ impl App {
                 pane.scroll_offset = (pane.scroll_offset + step).min(max_scroll);
             }
             self.clamp_link_selection_to_viewport(term_height);
+            self.maybe_mark_article_read();
         } else {
             let is_empty = matches!(self.active_pane().content, PaneContent::Empty);
             if is_empty {
@@ -78,6 +79,7 @@ impl App {
             let max_scroll = pane.max_scroll(term_height);
             pane.scroll_offset = (pane.scroll_offset + step).min(max_scroll);
             self.clamp_link_selection_to_viewport(term_height);
+            self.maybe_mark_article_read();
         } else {
             match &pane.content {
                 PaneContent::SearchResults { items, .. } if !items.is_empty() => {
@@ -122,6 +124,7 @@ impl App {
             let pane = self.active_pane_mut();
             pane.scroll_offset = pane.max_scroll(term_height);
             self.clamp_link_selection_to_viewport(term_height);
+            self.maybe_mark_article_read();
         } else {
             let pane = self.active_pane_mut();
             match &pane.content {
@@ -148,6 +151,7 @@ impl App {
                 }
             }
             self.clamp_link_selection_to_viewport(term_height);
+            self.maybe_mark_article_read();
         }
     }
 

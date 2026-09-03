@@ -77,6 +77,7 @@ impl App {
         pane.show_toc = false;
         pane.toc_focused = false;
         self.clamp_link_selection_to_viewport(term_height);
+        self.mark_active_article_read();
     }
 
     pub fn set_status_message(&mut self, msg: impl Into<String>) {

@@ -92,6 +92,8 @@ impl App {
                             parsed_doc: Box::new(parsed_doc),
                             last_render_options: render_opts,
                         };
+                        pane.opened_at = Some(std::time::Instant::now());
+                        pane.has_marked_read = false;
                         pane.selected_link_idx = initial_link_idx;
                         for img_url in image_urls {
                             self.send_fetch_image(img_url);
@@ -121,10 +123,23 @@ impl App {
             }
             NetworkEvent::FeedBatchLoaded { items } => {
                 self.feed.is_fetching = false;
-                for mut item in items {
+                let read_titles: std::collections::HashSet<String> = self
+                    .recent_articles
+                    .iter()
+                    .map(|e| e.title.to_lowercase())
+                    .collect();
+                let ranked_items = crate::feed::algorithm::rank_batch(
+                    items,
+                    &self.feed.profile,
+                    &read_titles,
+                );
+                for mut item in ranked_items {
                     item.is_liked = self.feed.profile.liked_articles.contains(&item.title)
                         || self.saved_lists.is_article_in_list("liked", &item.title);
                     self.feed.add_item(item);
+                }
+                if self.feed.items.is_empty() {
+                    self.maybe_fetch_feed_batch();
                 }
             }
             NetworkEvent::DailyFeedLoaded(feed) => {

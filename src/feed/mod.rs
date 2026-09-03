@@ -53,7 +53,7 @@ impl FeedState {
         if self.active_idx + 1 < self.items.len() {
             let item = &self.items[self.active_idx];
             if !item.is_liked {
-                self.profile.mark_seen(&item.title, &item.categories);
+                self.profile.mark_seen(&item.title);
             }
             self.active_idx += 1;
         }
