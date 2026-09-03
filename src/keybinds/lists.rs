@@ -32,13 +32,15 @@ pub fn handle_save_to_list_mode(app: &mut App, key: KeyEvent) {
                 app.mark_active_article_read();
                 app.record_article_saved(&target_title, added);
             } else {
-                app.lists_modal.create_input.clear();
+                app.search_modal.input.clear();
+                app.search_modal.cursor_pos = 0;
                 app.lists_modal.create_return_mode = InputMode::SaveToList;
                 app.input_mode = InputMode::CreateNewList;
             }
         }
         KeyCode::Char('n') => {
-            app.lists_modal.create_input.clear();
+            app.search_modal.input.clear();
+            app.search_modal.cursor_pos = 0;
             app.lists_modal.create_return_mode = InputMode::SaveToList;
             app.input_mode = InputMode::CreateNewList;
         }
@@ -50,30 +52,44 @@ pub fn handle_save_to_list_mode(app: &mut App, key: KeyEvent) {
 }
 
 pub fn handle_create_new_list_mode(app: &mut App, key: KeyEvent) {
-    match key.code {
-        KeyCode::Enter => {
-            let name = app.lists_modal.create_input.trim().to_string();
-            if !name.is_empty() {
-                let list_id = app.saved_lists.create_list(&name);
-                if !app.lists_modal.target_title.is_empty() {
-                    let target_title = app.lists_modal.target_title.clone();
-                    let added = app
-                        .saved_lists
-                        .toggle_article_in_list(&list_id, &target_title);
-                    app.mark_active_article_read();
-                    app.record_article_saved(&target_title, added);
-                }
+    if key.modifiers.contains(KeyModifiers::CONTROL) {
+        match key.code {
+            KeyCode::Char('w') | KeyCode::Char('h') | KeyCode::Backspace => {
+                app.delete_word_left();
+                return;
             }
-            app.input_mode = app.lists_modal.create_return_mode.clone();
+            _ => {}
         }
-        KeyCode::Esc => {
-            app.input_mode = app.lists_modal.create_return_mode.clone();
+    }
+    match key.code {
+        KeyCode::Char(c) => {
+            app.type_search_char(c);
         }
         KeyCode::Backspace => {
-            app.lists_modal.create_input.pop();
+            app.backspace_search_char();
         }
-        KeyCode::Char(c) => {
-            app.lists_modal.create_input.push(c);
+        KeyCode::Delete => {
+            app.delete_search_char();
+        }
+        KeyCode::Left => {
+            app.move_search_cursor_left();
+        }
+        KeyCode::Right => {
+            app.move_search_cursor_right();
+        }
+        KeyCode::Home => {
+            app.move_search_cursor_home();
+        }
+        KeyCode::End => {
+            app.move_search_cursor_end();
+        }
+        KeyCode::Enter => {
+            app.submit_create_new_list();
+        }
+        KeyCode::Esc => {
+            app.search_modal.input.clear();
+            app.search_modal.cursor_pos = 0;
+            app.input_mode = app.lists_modal.create_return_mode.clone();
         }
         _ => {}
     }
@@ -200,7 +216,8 @@ pub fn handle_saved_lists_viewer_mode(app: &mut App, key: KeyEvent) {
         }
         KeyCode::Char('n') => {
             app.lists_modal.target_title.clear();
-            app.lists_modal.create_input.clear();
+            app.search_modal.input.clear();
+            app.search_modal.cursor_pos = 0;
             app.lists_modal.create_return_mode = InputMode::SavedListsViewer;
             app.input_mode = InputMode::CreateNewList;
         }

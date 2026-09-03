@@ -115,12 +115,14 @@ fn handle_modal_left_click(
     }
 
     if app.input_mode == InputMode::CreateNewList {
-        let create_area = crate::ui::modals::compute_create_new_list_modal_area(size);
+        let create_area = crate::ui::modals::compute_search_modal_area(size);
         if col < create_area.x
             || col >= create_area.x + create_area.width
             || row < create_area.y
             || row >= create_area.y + create_area.height
         {
+            app.search_modal.input.clear();
+            app.search_modal.cursor_pos = 0;
             app.input_mode = app.lists_modal.create_return_mode.clone();
         }
         return true;
@@ -298,7 +300,8 @@ fn handle_modal_left_click(
                         .filter(|l| l.id != "liked")
                         .count();
                     app.lists_modal.save_cursor_idx = custom_lists_count;
-                    app.lists_modal.create_input.clear();
+                    app.search_modal.input.clear();
+                    app.search_modal.cursor_pos = 0;
                     app.lists_modal.create_return_mode = InputMode::SaveToList;
                     app.input_mode = InputMode::CreateNewList;
                 }

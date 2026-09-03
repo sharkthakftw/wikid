@@ -21,6 +21,9 @@ pub fn render_search_modal(f: &mut Frame, app: &App, size: Rect) {
     let (icon, title, border_color) = if app.input_mode == crate::app::InputMode::RenameList {
         let ic = if app.config.ui.icons { "★" } else { "" };
         (ic, "rename list", theme::VIOLET)
+    } else if app.input_mode == crate::app::InputMode::CreateNewList {
+        let ic = if app.config.ui.icons { "★" } else { "" };
+        (ic, "create new list", theme::VIOLET)
     } else {
         let ic = if app.config.ui.icons { "󰍉" } else { "" };
         (ic, "search wikipedia", theme::BEIGE)

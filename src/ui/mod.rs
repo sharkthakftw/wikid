@@ -69,7 +69,10 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         modals::render_help_modal(f, app, size);
     }
 
-    if app.input_mode == InputMode::Search || app.input_mode == InputMode::RenameList {
+    if app.input_mode == InputMode::Search
+        || app.input_mode == InputMode::RenameList
+        || app.input_mode == InputMode::CreateNewList
+    {
         modals::render_search_modal(f, app, size);
     }
 
@@ -79,10 +82,6 @@ pub fn draw(f: &mut Frame, app: &mut App) {
 
     if app.input_mode == InputMode::SaveToList {
         modals::render_save_to_list_modal(f, app, size);
-    }
-
-    if app.input_mode == InputMode::CreateNewList {
-        modals::render_create_new_list_modal(f, app, size);
     }
 
     if app.input_mode == InputMode::SavedListsViewer {

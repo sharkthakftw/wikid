@@ -35,15 +35,21 @@ impl App {
     }
 
     pub fn submit_create_new_list(&mut self) {
-        let name = self.lists_modal.create_input.trim().to_string();
+        let name = self.search_modal.input.trim().to_string();
         if !name.is_empty() {
             let list_id = self.saved_lists.create_list(&name);
             if !self.lists_modal.target_title.is_empty() {
-                self.saved_lists
-                    .toggle_article_in_list(&list_id, &self.lists_modal.target_title);
+                let target_title = self.lists_modal.target_title.clone();
+                let added = self
+                    .saved_lists
+                    .toggle_article_in_list(&list_id, &target_title);
+                self.mark_active_article_read();
+                self.record_article_saved(&target_title, added);
             }
+            self.set_status_message(format!("created list '{}'", name));
         }
-        self.lists_modal.create_input.clear();
+        self.search_modal.input.clear();
+        self.search_modal.cursor_pos = 0;
         self.input_mode = self.lists_modal.create_return_mode.clone();
     }
 
