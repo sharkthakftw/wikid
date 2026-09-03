@@ -103,8 +103,15 @@ pub fn select_best_item(candidates: &mut Vec<FeedItem>, profile: &FeedProfile) -
     }
 }
 
-pub fn rank_batch(mut candidates: Vec<FeedItem>, profile: &FeedProfile) -> Vec<FeedItem> {
-    candidates.retain(|item| !profile.seen_articles.contains(&item.title));
+pub fn rank_batch(
+    mut candidates: Vec<FeedItem>,
+    profile: &FeedProfile,
+    read_articles: &std::collections::HashSet<String>,
+) -> Vec<FeedItem> {
+    candidates.retain(|item| {
+        let title_lower = item.title.to_lowercase();
+        !profile.seen_articles.contains(&item.title) && !read_articles.contains(&title_lower)
+    });
     let mut ranked = Vec::with_capacity(candidates.len());
     while !candidates.is_empty() {
         if let Some(item) = select_best_item(&mut candidates, profile) {
