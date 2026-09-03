@@ -117,15 +117,8 @@ impl App {
             next_request_id: 1,
             cmd_tx,
         };
-        for title in &app.feed.profile.liked_articles {
-            app.saved_lists
-                .set_article_in_list("liked", "Liked", title, true);
-        }
-        if let Some(liked_list) = app.saved_lists.lists.iter().find(|l| l.id == "liked") {
-            for title in &liked_list.articles {
-                app.feed.profile.liked_articles.insert(title.clone());
-            }
-        }
+        app.saved_lists
+            .sync_liked_articles(&mut app.feed.profile.liked_articles);
         if app.config.general.auto_restore_session {
             if let Some(session) = crate::session::SessionState::load() {
                 app.restore_session(session);
