@@ -139,6 +139,7 @@ fn run_app(
         let has_loading = app.feed.is_fetching
             || (app.feed.active && app.feed.items.is_empty())
             || app.audio_player.is_playing()
+            || (app.daily_feed_modal.is_some() && app.daily_feed.is_none())
             || app
                 .tabs
                 .iter()

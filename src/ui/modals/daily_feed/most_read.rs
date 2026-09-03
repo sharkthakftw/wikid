@@ -12,7 +12,7 @@ use ratatui::{
 
 pub fn render_most_read_modal(
     f: &mut Frame,
-    app: &App,
+    _app: &App,
     entries: &[FeedEntry],
     modal_area: Rect,
     modal_block: Block,
@@ -25,13 +25,8 @@ pub fn render_most_read_modal(
 
     let mut lines = Vec::new();
     if entries.is_empty() {
-        let empty_msg = if app.daily_feed.is_none() {
-            "  loading daily feed from Wikipedia..."
-        } else {
-            "  no entries found."
-        };
         lines.push(Line::from(vec![Span::styled(
-            empty_msg,
+            "  no entries found.",
             Style::default().fg(theme::GREY).italic(),
         )]));
     } else {

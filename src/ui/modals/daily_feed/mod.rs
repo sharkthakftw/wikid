@@ -15,7 +15,13 @@ pub use types::{
 use crate::app::App;
 use crate::theme;
 use crate::ui::modals::utils::{centered_rect, render_modal_frame_at};
-use ratatui::{layout::Rect, Frame};
+use ratatui::{
+    layout::{Alignment, Rect},
+    style::{Style, Stylize},
+    text::{Line, Span},
+    widgets::Paragraph,
+    Frame,
+};
 
 pub fn compute_daily_feed_modal_area(container_rect: Rect, kind: DailyFeedKind) -> Rect {
     match kind {
@@ -175,6 +181,27 @@ pub fn render_daily_feed_modal(f: &mut Frame, app: &App, size: Rect) {
         accent_color,
         app.config.ui.rounded_borders,
     );
+
+    if app.daily_feed.is_none() {
+        let vertical_offset = (modal_area.height.saturating_sub(2) / 2) as usize;
+        let mut lines = Vec::new();
+        for _ in 0..vertical_offset {
+            lines.push(Line::from(""));
+        }
+        let spinner = crate::ui::current_spinner_frame();
+        lines.push(Line::from(vec![
+            Span::styled(format!("{} ", spinner), Style::default().fg(theme::BLUE).bold()),
+            Span::styled(
+                "fetching daily feed from Wikipedia...",
+                Style::default().fg(theme::BEIGE).bold(),
+            ),
+        ]));
+        let loading_p = Paragraph::new(lines)
+            .block(modal_block)
+            .alignment(Alignment::Center);
+        f.render_widget(loading_p, modal_area);
+        return;
+    }
 
     let entries = get_feed_entries(app, state.kind);
     let total = entries.len();
