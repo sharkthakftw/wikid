@@ -18,9 +18,8 @@ pub use settings::SettingItem;
 pub use tab::Tab;
 pub use types::{
     is_article_link, CategoriesModalState, ClosedTabState, ClosedTabsHistory, ConfigManager,
-    ConfirmAction, GraphicsState, ImageRenderTask, InputMode, ListsModalState,
-    NetworkDispatcher, OnboardingModalState, SearchModalState, SettingsModalState,
-    StatusMessageState,
+    ConfirmAction, GraphicsState, ImageRenderTask, InputMode, ListsModalState, NetworkDispatcher,
+    OnboardingModalState, SearchModalState, SettingsModalState, StatusMessageState,
 };
 
 use crate::api::NetworkCommand;

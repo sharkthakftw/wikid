@@ -277,7 +277,8 @@ impl App {
                     };
                 }
                 SettingItem::HalfblockFilter => {
-                    self.config.reader.halfblock_filter = match self.config.reader.halfblock_filter {
+                    self.config.reader.halfblock_filter = match self.config.reader.halfblock_filter
+                    {
                         crate::config::HalfblockFilter::Nearest => {
                             if delta < 0 {
                                 crate::config::HalfblockFilter::Lanczos3

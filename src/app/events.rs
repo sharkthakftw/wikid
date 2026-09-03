@@ -128,11 +128,8 @@ impl App {
                     .iter()
                     .map(|e| e.title.to_lowercase())
                     .collect();
-                let ranked_items = crate::feed::algorithm::rank_batch(
-                    items,
-                    &self.feed.profile,
-                    &read_titles,
-                );
+                let ranked_items =
+                    crate::feed::algorithm::rank_batch(items, &self.feed.profile, &read_titles);
                 for mut item in ranked_items {
                     item.is_liked = self.feed.profile.liked_articles.contains(&item.title)
                         || self.saved_lists.is_article_in_list("liked", &item.title);

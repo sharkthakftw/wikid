@@ -67,11 +67,7 @@ pub fn render_halfblock_image_from_bytes(
         crate::config::HalfblockFilter::Gaussian => image::imageops::FilterType::Gaussian,
         crate::config::HalfblockFilter::Lanczos3 => image::imageops::FilterType::Lanczos3,
     };
-    let resized = img.resize_exact(
-        target_cols as u32,
-        target_px_height as u32,
-        filter_type,
-    );
+    let resized = img.resize_exact(target_cols as u32, target_px_height as u32, filter_type);
     let rgba = resized.to_rgba8();
     let pixels: Vec<RgbPixel> = rgba
         .pixels()

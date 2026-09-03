@@ -71,14 +71,7 @@ pub fn render_categories_modal(f: &mut Frame, app: &App, size: Rect) {
         }
     }
 
-    render_selectable_list_column(
-        f,
-        left_area,
-        left_block,
-        cat_lines,
-        selected_cat_idx,
-        total,
-    );
+    render_selectable_list_column(f, left_area, left_block, cat_lines, selected_cat_idx, total);
 
     let selected_category = categories
         .get(selected_cat_idx)

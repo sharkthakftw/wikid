@@ -26,7 +26,8 @@ pub fn handle_save_to_list_mode(app: &mut App, key: KeyEvent) {
             if app.lists_modal.save_cursor_idx < custom_lists.len() {
                 let list_id = custom_lists[app.lists_modal.save_cursor_idx].id.clone();
                 let target_title = app.lists_modal.target_title.clone();
-                let added = app.saved_lists
+                let added = app
+                    .saved_lists
                     .toggle_article_in_list(&list_id, &target_title);
                 app.mark_active_article_read();
                 app.record_article_saved(&target_title, added);
@@ -56,7 +57,8 @@ pub fn handle_create_new_list_mode(app: &mut App, key: KeyEvent) {
                 let list_id = app.saved_lists.create_list(&name);
                 if !app.lists_modal.target_title.is_empty() {
                     let target_title = app.lists_modal.target_title.clone();
-                    let added = app.saved_lists
+                    let added = app
+                        .saved_lists
                         .toggle_article_in_list(&list_id, &target_title);
                     app.mark_active_article_read();
                     app.record_article_saved(&target_title, added);

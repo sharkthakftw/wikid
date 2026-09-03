@@ -130,7 +130,10 @@ pub fn render_feed_view(f: &mut Frame, feed: &FeedState, area: Rect, rounded: bo
     card_lines.push(Line::from(""));
     if !item.categories.is_empty() {
         let max_display = 3;
-        let mut spans = vec![Span::styled("   categories: ", Style::default().fg(theme::GREY))];
+        let mut spans = vec![Span::styled(
+            "   categories: ",
+            Style::default().fg(theme::GREY),
+        )];
 
         let mut sorted_indices: Vec<usize> = (0..item.categories.len()).collect();
         sorted_indices.sort_by(|&a, &b| {
@@ -148,10 +151,7 @@ pub fn render_feed_view(f: &mut Frame, feed: &FeedState, area: Rect, rounded: bo
                 spans.push(Span::styled(" · ", Style::default().fg(theme::GREY)));
             }
             let cat = &item.categories[idx];
-            let is_matched = feed
-                .profile
-                .score_for_categories(std::slice::from_ref(cat))
-                > 0;
+            let is_matched = feed.profile.score_for_categories(std::slice::from_ref(cat)) > 0;
             let cat_color = if is_matched {
                 theme::VIOLET
             } else {

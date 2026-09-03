@@ -46,7 +46,9 @@ fn compute_tab_bar_key(app: &App, area_width: u16) -> u64 {
                     0u8.hash(&mut hasher);
                     title.hash(&mut hasher);
                     parsed_doc.spoken_audio.is_some().hash(&mut hasher);
-                    app.saved_lists.is_article_saved_anywhere(title).hash(&mut hasher);
+                    app.saved_lists
+                        .is_article_saved_anywhere(title)
+                        .hash(&mut hasher);
                 }
                 PaneContent::SearchResults { query, .. } => {
                     1u8.hash(&mut hasher);

@@ -41,7 +41,10 @@ fn fnv1a_hash(s: &str) -> u64 {
 }
 
 pub fn normalize_title(title: &str) -> String {
-    crate::parser::url_decode(title).replace('_', " ").trim().to_string()
+    crate::parser::url_decode(title)
+        .replace('_', " ")
+        .trim()
+        .to_string()
 }
 
 pub fn cache_file_path(title: &str) -> PathBuf {

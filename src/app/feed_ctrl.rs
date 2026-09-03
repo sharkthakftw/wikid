@@ -78,7 +78,10 @@ impl App {
             if pane.has_marked_read {
                 return;
             }
-            let crate::app::pane::PaneContent::ArticleText { title, parsed_doc, .. } = &pane.content else {
+            let crate::app::pane::PaneContent::ArticleText {
+                title, parsed_doc, ..
+            } = &pane.content
+            else {
                 return;
             };
             let dwelled = pane
@@ -105,7 +108,10 @@ impl App {
             if pane.has_marked_read {
                 return;
             }
-            let crate::app::pane::PaneContent::ArticleText { title, parsed_doc, .. } = &pane.content else {
+            let crate::app::pane::PaneContent::ArticleText {
+                title, parsed_doc, ..
+            } = &pane.content
+            else {
                 return;
             };
             pane.has_marked_read = true;
@@ -121,7 +127,10 @@ impl App {
     pub fn record_article_saved(&mut self, target_title: &str, added: bool) {
         let categories = {
             let pane = self.active_pane();
-            if let crate::app::pane::PaneContent::ArticleText { title, parsed_doc, .. } = &pane.content {
+            if let crate::app::pane::PaneContent::ArticleText {
+                title, parsed_doc, ..
+            } = &pane.content
+            {
                 if title.eq_ignore_ascii_case(target_title) {
                     parsed_doc.categories.clone()
                 } else {
@@ -133,7 +142,10 @@ impl App {
         };
 
         if added {
-            self.feed.profile.seen_articles.insert(target_title.to_string());
+            self.feed
+                .profile
+                .seen_articles
+                .insert(target_title.to_string());
             if !categories.is_empty() {
                 self.feed.profile.record_engagement(&categories, 50);
             }

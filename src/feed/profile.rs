@@ -142,13 +142,19 @@ fn category_matches(key: &str, cat: &str) -> bool {
             let before = if pos == 0 {
                 true
             } else {
-                !cat_lower[..pos].chars().next_back().is_some_and(|c| c.is_alphanumeric())
+                !cat_lower[..pos]
+                    .chars()
+                    .next_back()
+                    .is_some_and(|c| c.is_alphanumeric())
             };
             let end = pos + key_lower.len();
             let after = if end >= cat_lower.len() {
                 true
             } else {
-                !cat_lower[end..].chars().next().is_some_and(|c| c.is_alphanumeric())
+                !cat_lower[end..]
+                    .chars()
+                    .next()
+                    .is_some_and(|c| c.is_alphanumeric())
             };
             if before && after {
                 return true;
@@ -230,7 +236,10 @@ impl FeedProfile {
             if let Some((_, label, subcats)) = POPULAR_CATEGORIES.get(idx) {
                 self.selected_categories.push(label.to_string());
                 for subcat in *subcats {
-                    let current = self.category_scores.entry(subcat.to_lowercase()).or_insert(0);
+                    let current = self
+                        .category_scores
+                        .entry(subcat.to_lowercase())
+                        .or_insert(0);
                     *current += 200;
                 }
             }

@@ -18,8 +18,7 @@ pub fn render_grid(
 
     let mut cell_rendered_lines: Vec<Vec<Vec<Span<'static>>>> =
         vec![Vec::new(); num_rows * num_cols];
-    let mut cell_rendered_links: Vec<Vec<CellLinkInfo>> =
-        vec![Vec::new(); num_rows * num_cols];
+    let mut cell_rendered_links: Vec<Vec<CellLinkInfo>> = vec![Vec::new(); num_rows * num_cols];
 
     for r in 0..num_rows {
         for c in 0..num_cols {
