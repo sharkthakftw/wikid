@@ -117,4 +117,29 @@ impl App {
             self.feed.profile.save();
         }
     }
+
+    pub fn record_article_saved(&mut self, target_title: &str, added: bool) {
+        let categories = {
+            let pane = self.active_pane();
+            if let crate::app::pane::PaneContent::ArticleText { title, parsed_doc, .. } = &pane.content {
+                if title.eq_ignore_ascii_case(target_title) {
+                    parsed_doc.categories.clone()
+                } else {
+                    Vec::new()
+                }
+            } else {
+                Vec::new()
+            }
+        };
+
+        if added {
+            self.feed.profile.seen_articles.insert(target_title.to_string());
+            if !categories.is_empty() {
+                self.feed.profile.record_engagement(&categories, 50);
+            }
+        } else if !categories.is_empty() {
+            self.feed.profile.record_engagement(&categories, -50);
+        }
+        self.feed.profile.save();
+    }
 }
