@@ -53,7 +53,7 @@ impl FeedProfile {
         if let Some(mut profile) = loaded {
             let mut normalized = HashMap::with_capacity(profile.category_scores.len());
             for (k, v) in profile.category_scores {
-                normalized.insert(k.to_lowercase(), v);
+                normalized.insert(k.to_lowercase(), v.max(0));
             }
             profile.category_scores = normalized;
             return profile;
@@ -82,7 +82,7 @@ impl FeedProfile {
         for cat in categories {
             let cat_lower = cat.to_lowercase();
             let current = self.category_scores.entry(cat_lower).or_insert(0);
-            *current += points;
+            *current = (*current + points).max(0);
         }
     }
 
@@ -104,11 +104,10 @@ impl FeedProfile {
         is_liked
     }
 
-    pub fn mark_seen(&mut self, title: &str, categories: &[String]) {
+    pub fn mark_seen(&mut self, title: &str) {
         if !self.seen_articles.contains(title) {
             self.seen_articles.insert(title.to_string());
             self.total_seen += 1;
-            self.record_engagement(categories, -5);
             self.save();
         }
     }
