@@ -100,7 +100,7 @@ fn fetch_category_items(
         .query("generator", "categorymembers")
         .query("gcmtitle", &category_title)
         .query("gcmtype", "page")
-        .query("gcmlimit", "2");
+        .query("gcmlimit", "8");
     query_feed_items(req, timeout_secs)
 }
 
@@ -110,7 +110,7 @@ fn fetch_random_items(agent: &ureq::Agent, timeout_secs: u64) -> Result<Vec<Feed
         .get(url)
         .query("generator", "random")
         .query("grnnamespace", "0")
-        .query("grnlimit", "3");
+        .query("grnlimit", "6");
     query_feed_items(req, timeout_secs)
 }
 
@@ -140,9 +140,14 @@ pub fn fetch_feed_batch(agent: &ureq::Agent, timeout_secs: u64) -> Result<Vec<Fe
         fetch_random_items(&agent_rand, timeout_secs)
     }));
 
+    let mut seen_titles = std::collections::HashSet::new();
     for handle in handles {
         if let Ok(Ok(batch)) = handle.join() {
-            items.extend(batch);
+            for item in batch {
+                if seen_titles.insert(item.title.clone()) {
+                    items.push(item);
+                }
+            }
         }
     }
 
