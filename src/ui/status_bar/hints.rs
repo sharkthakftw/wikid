@@ -15,9 +15,10 @@ pub fn get_mode_badge(app: &App) -> (&'static str, Color) {
             InputMode::Search => (" SEARCH ", theme::BEIGE),
             InputMode::LocalSearch => (" FIND ", theme::YELLOW),
             InputMode::CategoryOnboarding => (" SETUP ", theme::VIOLET),
-            InputMode::SaveToList | InputMode::SavedListsViewer | InputMode::CreateNewList => {
-                (" LISTS ", theme::VIOLET)
-            }
+            InputMode::SaveToList
+            | InputMode::SavedListsViewer
+            | InputMode::CreateNewList
+            | InputMode::RenameList => (" LISTS ", theme::VIOLET),
             InputMode::Settings => (" CONFIG ", theme::ORANGE),
             InputMode::Help => (" HELP ", theme::GREY),
             InputMode::Confirm => (" PROMPT ", theme::RED),
@@ -78,14 +79,14 @@ pub fn get_center_spans(
                 .fg(theme::VIOLET)
                 .add_modifier(Modifier::BOLD),
         )],
-        InputMode::CreateNewList => vec![Span::styled(
+        InputMode::CreateNewList | InputMode::RenameList => vec![Span::styled(
             "enter confirm · esc cancel",
             Style::default()
                 .fg(theme::VIOLET)
                 .add_modifier(Modifier::BOLD),
         )],
         InputMode::SavedListsViewer => vec![Span::styled(
-            "h/l switch pane · j/k navigate · enter open · d delete · esc close",
+            "h/l pane · j/k navigate · enter open · r rename · d delete · esc close",
             Style::default()
                 .fg(theme::VIOLET)
                 .add_modifier(Modifier::BOLD),

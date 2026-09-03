@@ -181,6 +181,19 @@ impl SavedListsStore {
         }
     }
 
+    pub fn rename_list(&mut self, list_id: &str, new_name: &str) -> bool {
+        let trimmed = new_name.trim();
+        if list_id == "liked" || trimmed.is_empty() {
+            return false;
+        }
+        if let Some(list) = self.lists.iter_mut().find(|l| l.id == list_id) {
+            list.name = trimmed.to_string();
+            self.save();
+            return true;
+        }
+        false
+    }
+
     pub fn set_article_in_list(
         &mut self,
         list_id: &str,

@@ -18,6 +18,7 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent, term_width: u16, term_heig
         InputMode::SaveToList => lists::handle_save_to_list_mode(app, key),
         InputMode::CreateNewList => lists::handle_create_new_list_mode(app, key),
         InputMode::SavedListsViewer => lists::handle_saved_lists_viewer_mode(app, key),
+        InputMode::RenameList => lists::handle_rename_list_mode(app, key),
         InputMode::Confirm => confirm::handle_confirm_mode(app, key),
         InputMode::Settings => settings::handle_settings_mode(app, key),
         InputMode::Categories => categories::handle_categories_mode(app, key),

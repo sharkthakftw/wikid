@@ -18,13 +18,19 @@ pub fn compute_search_modal_area(size: Rect) -> Rect {
 
 pub fn render_search_modal(f: &mut Frame, app: &App, size: Rect) {
     let area = compute_search_modal_area(size);
-    let icon = if app.config.ui.icons { "󰍉" } else { "" };
+    let (icon, title, border_color) = if app.input_mode == crate::app::InputMode::RenameList {
+        let ic = if app.config.ui.icons { "★" } else { "" };
+        (ic, "rename list", theme::VIOLET)
+    } else {
+        let ic = if app.config.ui.icons { "󰍉" } else { "" };
+        (ic, "search wikipedia", theme::BEIGE)
+    };
     let search_block = render_modal_frame_at(
         f,
         area,
         icon,
-        "search wikipedia",
-        theme::BEIGE,
+        title,
+        border_color,
         app.config.ui.rounded_borders,
     );
 
@@ -45,14 +51,14 @@ pub fn render_search_modal(f: &mut Frame, app: &App, size: Rect) {
     let mut spans = Vec::new();
     spans.push(Span::styled(
         " > ",
-        Style::default().fg(theme::BEIGE).bold(),
+        Style::default().fg(border_color).bold(),
     ));
 
     for (i, &ch) in visible_chars.iter().enumerate() {
         if i == rel_cursor_pos {
             spans.push(Span::styled(
                 ch.to_string(),
-                Style::default().bg(theme::BEIGE).fg(theme::BG).bold(),
+                Style::default().bg(border_color).fg(theme::BG).bold(),
             ));
         } else {
             spans.push(Span::styled(
@@ -63,7 +69,7 @@ pub fn render_search_modal(f: &mut Frame, app: &App, size: Rect) {
     }
 
     if rel_cursor_pos >= visible_chars.len() {
-        spans.push(Span::styled("_", Style::default().fg(theme::BEIGE).bold()));
+        spans.push(Span::styled("_", Style::default().fg(border_color).bold()));
     }
 
     let input_text = Line::from(spans);

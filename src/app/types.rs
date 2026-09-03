@@ -28,6 +28,7 @@ pub enum InputMode {
     SaveToList,
     CreateNewList,
     SavedListsViewer,
+    RenameList,
     Confirm,
     Settings,
     Categories,
@@ -99,6 +100,7 @@ pub struct ListsModalState {
     pub viewer_list_idx: usize,
     pub viewer_article_idx: usize,
     pub viewer_focus_right: bool,
+    pub rename_list_id: String,
 }
 
 impl Default for ListsModalState {
@@ -112,6 +114,7 @@ impl Default for ListsModalState {
             viewer_list_idx: 0,
             viewer_article_idx: 0,
             viewer_focus_right: false,
+            rename_list_id: String::new(),
         }
     }
 }

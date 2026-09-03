@@ -186,6 +186,18 @@ pub fn handle_saved_lists_viewer_mode(app: &mut App, key: KeyEvent) {
                 }
             }
         }
+        KeyCode::Char('r') => {
+            if !app.lists_modal.viewer_focus_right {
+                if let Some(list) = app.saved_lists.lists.get(app.lists_modal.viewer_list_idx) {
+                    if list.id != "liked" {
+                        app.lists_modal.rename_list_id = list.id.clone();
+                        app.search_modal.input = list.name.clone();
+                        app.search_modal.cursor_pos = list.name.chars().count();
+                        app.input_mode = InputMode::RenameList;
+                    }
+                }
+            }
+        }
         KeyCode::Char('n') => {
             app.lists_modal.target_title.clear();
             app.lists_modal.create_input.clear();
@@ -194,6 +206,59 @@ pub fn handle_saved_lists_viewer_mode(app: &mut App, key: KeyEvent) {
         }
         KeyCode::Char('M') | KeyCode::Esc | KeyCode::Char('q') => {
             app.input_mode = InputMode::Normal;
+        }
+        _ => {}
+    }
+}
+
+pub fn handle_rename_list_mode(app: &mut App, key: KeyEvent) {
+    if key.modifiers.contains(KeyModifiers::CONTROL) {
+        match key.code {
+            KeyCode::Char('w') | KeyCode::Char('h') | KeyCode::Backspace => {
+                app.delete_word_left();
+                return;
+            }
+            _ => {}
+        }
+    }
+    match key.code {
+        KeyCode::Char(c) => {
+            app.type_search_char(c);
+        }
+        KeyCode::Backspace => {
+            app.backspace_search_char();
+        }
+        KeyCode::Delete => {
+            app.delete_search_char();
+        }
+        KeyCode::Left => {
+            app.move_search_cursor_left();
+        }
+        KeyCode::Right => {
+            app.move_search_cursor_right();
+        }
+        KeyCode::Home => {
+            app.move_search_cursor_home();
+        }
+        KeyCode::End => {
+            app.move_search_cursor_end();
+        }
+        KeyCode::Enter => {
+            let new_name = app.search_modal.input.trim().to_string();
+            if !new_name.is_empty() {
+                let list_id = app.lists_modal.rename_list_id.clone();
+                if app.saved_lists.rename_list(&list_id, &new_name) {
+                    app.set_status_message(format!("renamed list to '{}'", new_name));
+                }
+            }
+            app.search_modal.input.clear();
+            app.search_modal.cursor_pos = 0;
+            app.input_mode = InputMode::SavedListsViewer;
+        }
+        KeyCode::Esc => {
+            app.search_modal.input.clear();
+            app.search_modal.cursor_pos = 0;
+            app.input_mode = InputMode::SavedListsViewer;
         }
         _ => {}
     }

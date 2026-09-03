@@ -57,7 +57,7 @@ impl App {
     }
 
     pub fn type_search_char(&mut self, c: char) {
-        if self.input_mode == crate::app::InputMode::Search {
+        if matches!(self.input_mode, crate::app::InputMode::Search | crate::app::InputMode::RenameList) {
             if let Some((byte_idx, _)) = self
                 .search_modal
                 .input
@@ -73,7 +73,9 @@ impl App {
     }
 
     pub fn backspace_search_char(&mut self) {
-        if self.input_mode == crate::app::InputMode::Search && self.search_modal.cursor_pos > 0 {
+        if matches!(self.input_mode, crate::app::InputMode::Search | crate::app::InputMode::RenameList)
+            && self.search_modal.cursor_pos > 0
+        {
             let target_char = self.search_modal.cursor_pos - 1;
             if let Some((byte_idx, _)) = self.search_modal.input.char_indices().nth(target_char) {
                 self.search_modal.input.remove(byte_idx);
@@ -85,7 +87,9 @@ impl App {
     }
 
     pub fn delete_word_left(&mut self) {
-        if self.input_mode == crate::app::InputMode::Search && self.search_modal.cursor_pos > 0 {
+        if matches!(self.input_mode, crate::app::InputMode::Search | crate::app::InputMode::RenameList)
+            && self.search_modal.cursor_pos > 0
+        {
             let char_indices: Vec<(usize, char)> = self.search_modal.input.char_indices().collect();
             let end_char = self.search_modal.cursor_pos.min(char_indices.len());
             let mut start_char = end_char;
@@ -109,7 +113,7 @@ impl App {
     }
 
     pub fn delete_search_char(&mut self) {
-        if self.input_mode == crate::app::InputMode::Search {
+        if matches!(self.input_mode, crate::app::InputMode::Search | crate::app::InputMode::RenameList) {
             if let Some((byte_idx, _)) = self
                 .search_modal
                 .input
@@ -122,13 +126,13 @@ impl App {
     }
 
     pub fn move_search_cursor_left(&mut self) {
-        if self.input_mode == crate::app::InputMode::Search {
+        if matches!(self.input_mode, crate::app::InputMode::Search | crate::app::InputMode::RenameList) {
             self.search_modal.cursor_pos = self.search_modal.cursor_pos.saturating_sub(1);
         }
     }
 
     pub fn move_search_cursor_right(&mut self) {
-        if self.input_mode == crate::app::InputMode::Search {
+        if matches!(self.input_mode, crate::app::InputMode::Search | crate::app::InputMode::RenameList) {
             let char_count = self.search_modal.input.chars().count();
             if self.search_modal.cursor_pos < char_count {
                 self.search_modal.cursor_pos += 1;
@@ -137,13 +141,13 @@ impl App {
     }
 
     pub fn move_search_cursor_home(&mut self) {
-        if self.input_mode == crate::app::InputMode::Search {
+        if matches!(self.input_mode, crate::app::InputMode::Search | crate::app::InputMode::RenameList) {
             self.search_modal.cursor_pos = 0;
         }
     }
 
     pub fn move_search_cursor_end(&mut self) {
-        if self.input_mode == crate::app::InputMode::Search {
+        if matches!(self.input_mode, crate::app::InputMode::Search | crate::app::InputMode::RenameList) {
             self.search_modal.cursor_pos = self.search_modal.input.chars().count();
         }
     }

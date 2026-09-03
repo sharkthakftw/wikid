@@ -69,7 +69,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         modals::render_help_modal(f, app, size);
     }
 
-    if app.input_mode == InputMode::Search {
+    if app.input_mode == InputMode::Search || app.input_mode == InputMode::RenameList {
         modals::render_search_modal(f, app, size);
     }
 
