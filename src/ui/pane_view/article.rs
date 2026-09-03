@@ -136,7 +136,6 @@ pub fn render_article_pane(
     for (local_idx, orig_line) in parsed_doc.lines[view_start..view_end].iter().enumerate() {
         let line_idx = view_start + local_idx;
 
-        let resolved_proto = crate::graphics::resolve_protocol(app.config.reader.image_protocol);
         let mut image_override = None;
         if app.config.reader.show_images {
             for img in &parsed_doc.images {
@@ -287,7 +286,6 @@ pub fn render_article_pane(
     let paragraph = Paragraph::new(rendered_lines).block(block);
     f.render_widget(paragraph, rect);
 
-    let resolved_proto = crate::graphics::resolve_protocol(app.config.reader.image_protocol);
     if app.config.reader.show_images {
         for img in &parsed_doc.images {
             let img_top = img.line_idx;
