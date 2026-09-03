@@ -17,9 +17,10 @@ pub use pane::{LocalMatch, Pane, PaneContent, TextSelection};
 pub use settings::SettingItem;
 pub use tab::Tab;
 pub use types::{
-    is_article_link, CategoriesModalState, ClosedTabState, ConfirmAction, GraphicsState,
-    ImageRenderTask, InputMode, ListsModalState, OnboardingModalState, SearchModalState,
-    SettingsModalState,
+    is_article_link, CategoriesModalState, ClosedTabState, ClosedTabsHistory, ConfigManager,
+    ConfirmAction, GraphicsState, ImageRenderTask, InputMode, ListsModalState,
+    NetworkDispatcher, OnboardingModalState, SearchModalState, SettingsModalState,
+    StatusMessageState,
 };
 
 use crate::api::NetworkCommand;
@@ -40,13 +41,11 @@ pub struct App {
     pub saved_lists: crate::saved_lists::SavedListsStore,
     pub lists_modal: ListsModalState,
     pub confirm_action: Option<ConfirmAction>,
-    pub config: crate::config::Config,
-    pub config_last_mtime: Option<std::time::SystemTime>,
-    pub last_config_check: std::time::Instant,
+    pub config: ConfigManager,
     pub settings_modal: SettingsModalState,
     pub categories_modal: CategoriesModalState,
-    pub closed_tabs_stack: Vec<ClosedTabState>,
-    pub status_message: Option<(String, std::time::Instant)>,
+    pub closed_tabs_stack: ClosedTabsHistory,
+    pub status_message: StatusMessageState,
     pub wiki_stats: crate::api::WikiStatistics,
     pub daily_feed: Option<crate::api::DailyFeed>,
     pub daily_feed_modal: Option<crate::ui::modals::DailyFeedModalState>,
@@ -59,8 +58,7 @@ pub struct App {
     pub graphics: GraphicsState,
 
     pub(crate) next_pane_id: usize,
-    pub(crate) next_request_id: u64,
-    pub(crate) cmd_tx: Sender<NetworkCommand>,
+    pub(crate) network: NetworkDispatcher,
 }
 
 impl App {
@@ -95,13 +93,11 @@ impl App {
             saved_lists: crate::saved_lists::SavedListsStore::load(),
             lists_modal: ListsModalState::default(),
             confirm_action: None,
-            config,
-            config_last_mtime: crate::config::Config::get_modified_time(),
-            last_config_check: std::time::Instant::now(),
+            config: ConfigManager::new(config),
             settings_modal: SettingsModalState::default(),
             categories_modal: CategoriesModalState::default(),
-            closed_tabs_stack: Vec::new(),
-            status_message: None,
+            closed_tabs_stack: ClosedTabsHistory::default(),
+            status_message: StatusMessageState::default(),
             wiki_stats: crate::api::WikiStatistics::default(),
             daily_feed: cached_feed,
             daily_feed_modal: None,
@@ -114,8 +110,7 @@ impl App {
             graphics: GraphicsState::default(),
 
             next_pane_id: 1,
-            next_request_id: 1,
-            cmd_tx,
+            network: NetworkDispatcher::new(cmd_tx),
         };
         app.saved_lists
             .sync_liked_articles(&mut app.feed.profile.liked_articles);
@@ -131,10 +126,7 @@ impl App {
     }
 
     pub fn check_config_sync(&mut self) {
-        if self.last_config_check.elapsed() >= std::time::Duration::from_millis(500) {
-            self.last_config_check = std::time::Instant::now();
-            self.config.reload_if_changed(&mut self.config_last_mtime);
-        }
+        self.config.check_sync();
     }
 
     pub fn save_session(&self) {

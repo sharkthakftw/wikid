@@ -42,17 +42,13 @@ pub fn render(f: &mut Frame, app: &App, area: Rect) {
 
     let center_width = (area.width as usize).saturating_sub((left_width + right_width) as usize);
 
-    let center_spans = if let Some((ref msg, time)) = app.status_message {
-        if time.elapsed().as_secs_f32() < 3.0 {
-            vec![Span::styled(
-                msg.clone(),
-                Style::default()
-                    .fg(theme::LIME)
-                    .add_modifier(Modifier::BOLD),
-            )]
-        } else {
-            get_center_spans(app, active_pane, center_width)
-        }
+    let center_spans = if let Some(msg) = app.status_message.get() {
+        vec![Span::styled(
+            msg.to_string(),
+            Style::default()
+                .fg(theme::LIME)
+                .add_modifier(Modifier::BOLD),
+        )]
     } else {
         get_center_spans(app, active_pane, center_width)
     };

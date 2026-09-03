@@ -66,9 +66,6 @@ impl App {
                         history_back: pane.history_back,
                         history_forward: pane.history_forward,
                     });
-                    if self.closed_tabs_stack.len() > 30 {
-                        self.closed_tabs_stack.remove(0);
-                    }
                 }
             }
             if self.active_tab_idx >= self.tabs.len() {
@@ -84,9 +81,6 @@ impl App {
                         history_back: pane.history_back.clone(),
                         history_forward: pane.history_forward.clone(),
                     });
-                    if self.closed_tabs_stack.len() > 30 {
-                        self.closed_tabs_stack.remove(0);
-                    }
                 }
             }
             let new_pane_id = self.next_pane_id;
@@ -142,9 +136,6 @@ impl App {
 
         if let Some(closed) = closed_state {
             self.closed_tabs_stack.push(closed);
-            if self.closed_tabs_stack.len() > 30 {
-                self.closed_tabs_stack.remove(0);
-            }
         }
     }
 

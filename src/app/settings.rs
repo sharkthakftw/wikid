@@ -383,7 +383,7 @@ impl App {
                 }
             }
             self.config.save();
-            self.config_last_mtime = Config::get_modified_time();
+            self.config.update_mtime();
         }
     }
 
@@ -476,13 +476,13 @@ impl App {
                 }
             }
             self.config.save();
-            self.config_last_mtime = Config::get_modified_time();
+            self.config.update_mtime();
         }
     }
 
     pub fn reset_all_settings(&mut self) {
-        self.config = Config::default();
+        self.config.current = Config::default();
         self.config.save();
-        self.config_last_mtime = Config::get_modified_time();
+        self.config.update_mtime();
     }
 }

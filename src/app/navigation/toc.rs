@@ -80,6 +80,6 @@ impl App {
     }
 
     pub fn set_status_message(&mut self, msg: impl Into<String>) {
-        self.status_message = Some((msg.into(), std::time::Instant::now()));
+        self.status_message.set(msg);
     }
 }

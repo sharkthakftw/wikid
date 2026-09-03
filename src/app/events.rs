@@ -178,8 +178,7 @@ impl App {
             self.categories_modal
                 .fetching_categories
                 .insert(category.to_string());
-            let _ = self
-                .cmd_tx
+            self.network
                 .send(crate::api::NetworkCommand::FetchCategoryMembers {
                     category: category.to_string(),
                     limit: 50,
