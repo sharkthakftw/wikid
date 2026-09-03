@@ -11,7 +11,15 @@ struct CachedKittyPayload {
     id: u32,
 }
 
+struct PredecodedKittyData {
+    width: u32,
+    height: u32,
+    b64: String,
+}
+
 static KITTY_PAYLOAD_CACHE: Mutex<Option<HashMap<PathBuf, CachedKittyPayload>>> = Mutex::new(None);
+static KITTY_PREDECODED_CACHE: Mutex<Option<HashMap<PathBuf, PredecodedKittyData>>> =
+    Mutex::new(None);
 static KITTY_NEXT_ID: Mutex<u32> = Mutex::new(1);
 
 pub fn base64_encode(data: &[u8]) -> String {
@@ -43,6 +51,46 @@ pub fn base64_encode(data: &[u8]) -> String {
 pub fn invalidate_kitty_cache() {
     let mut cache_guard = KITTY_PAYLOAD_CACHE.lock().unwrap();
     *cache_guard = None;
+    let mut pre_guard = KITTY_PREDECODED_CACHE.lock().unwrap();
+    *pre_guard = None;
+}
+
+pub fn predecode_kitty_image(path: &Path) {
+    {
+        let mut pre_guard = KITTY_PREDECODED_CACHE.lock().unwrap();
+        let pre_cache = pre_guard.get_or_insert_with(HashMap::new);
+        if pre_cache.contains_key(path) {
+            return;
+        }
+    }
+    let Ok(image_bytes) = std::fs::read(path) else {
+        return;
+    };
+    if let Ok(img) = image::load_from_memory(&image_bytes) {
+        let (w, h) = (img.width(), img.height());
+        let mut rgba = img.to_rgba8();
+        for pixel in rgba.pixels_mut() {
+            let a = pixel[3] as u32;
+            if a < 255 {
+                let inv_a = 255 - a;
+                pixel[0] = ((pixel[0] as u32 * a + 255 * inv_a) / 255) as u8;
+                pixel[1] = ((pixel[1] as u32 * a + 255 * inv_a) / 255) as u8;
+                pixel[2] = ((pixel[2] as u32 * a + 255 * inv_a) / 255) as u8;
+                pixel[3] = 255;
+            }
+        }
+        let b64 = base64_encode(&rgba);
+        let mut pre_guard = KITTY_PREDECODED_CACHE.lock().unwrap();
+        let pre_cache = pre_guard.get_or_insert_with(HashMap::new);
+        pre_cache.insert(
+            path.to_path_buf(),
+            PredecodedKittyData {
+                width: w,
+                height: h,
+                b64,
+            },
+        );
+    }
 }
 
 pub fn clear_all_kitty_images<W: Write>(writer: &mut W) -> io::Result<()> {
@@ -73,11 +121,21 @@ pub fn render_kitty_image_from_path<W: Write>(
         return Ok(());
     }
 
-    let Ok(image_bytes) = std::fs::read(args.path) else {
-        return Ok(());
+    let predecoded = {
+        let mut pre_guard = KITTY_PREDECODED_CACHE.lock().unwrap();
+        let pre_cache = pre_guard.get_or_insert_with(HashMap::new);
+        pre_cache.remove(args.path)
     };
 
-    if let Ok(img) = image::load_from_memory(&image_bytes) {
+    let (w, h, b64) = if let Some(pre) = predecoded {
+        (pre.width, pre.height, pre.b64)
+    } else {
+        let Ok(image_bytes) = std::fs::read(args.path) else {
+            return Ok(());
+        };
+        let Ok(img) = image::load_from_memory(&image_bytes) else {
+            return Ok(());
+        };
         let (w, h) = (img.width(), img.height());
         let mut rgba = img.to_rgba8();
         for pixel in rgba.pixels_mut() {
@@ -91,19 +149,20 @@ pub fn render_kitty_image_from_path<W: Write>(
             }
         }
         let b64 = base64_encode(&rgba);
+        (w, h, b64)
+    };
 
-        let mut id_guard = KITTY_NEXT_ID.lock().unwrap();
-        let id = *id_guard;
-        *id_guard += 1;
+    let mut id_guard = KITTY_NEXT_ID.lock().unwrap();
+    let id = *id_guard;
+    *id_guard += 1;
 
-        render_kitty_rgba_chunked(writer, id, &b64, w, h)?;
-        write!(writer, "\x1b[{};{}H", args.screen_y + 1, args.screen_x + 1)?;
-        place_kitty_image(writer, id, &args, h)?;
-        cache.insert(
-            args.path.to_path_buf(),
-            CachedKittyPayload { height: h, id },
-        );
-    }
+    render_kitty_rgba_chunked(writer, id, &b64, w, h)?;
+    write!(writer, "\x1b[{};{}H", args.screen_y + 1, args.screen_x + 1)?;
+    place_kitty_image(writer, id, &args, h)?;
+    cache.insert(
+        args.path.to_path_buf(),
+        CachedKittyPayload { height: h, id },
+    );
 
     Ok(())
 }

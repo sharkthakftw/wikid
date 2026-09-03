@@ -35,43 +35,25 @@ pub fn render_article_pane(
     if resolved_proto.is_halfblocks() && app.config.reader.show_images {
         let pane = &mut app.tabs[tab_idx].panes[pane_idx];
         if let crate::app::PaneContent::ArticleText { parsed_doc, .. } = &pane.content {
-            let images_to_render: Vec<(String, usize, usize, std::path::PathBuf)> = parsed_doc
-                .images
-                .iter()
-                .filter(|img| {
-                    img.line_idx + img.height_lines > view_start && img.line_idx < view_end
-                })
-                .filter_map(|img| {
+            let mut to_request = Vec::new();
+            for img in &parsed_doc.images {
+                if img.line_idx + img.height_lines > view_start && img.line_idx < view_end {
                     let cols = img.width_cols;
                     let rows = img.height_lines;
                     let key = (img.url.clone(), cols, rows);
-                    if !pane.halfblock_cache.contains_key(&key) {
-                        let path =
-                            pane.loaded_images.get(&img.url).cloned().or_else(|| {
-                                crate::graphics::cache::get_cached_image_path(&img.url)
-                            })?;
-                        Some((img.url.clone(), cols, rows, path))
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-            for (url, cols, rows, path) in images_to_render {
-                if let Ok(bytes) = std::fs::read(&path) {
-                    if let Some(hb_lines) =
-                        crate::graphics::halfblocks::render_halfblock_image_from_bytes(
-                            &bytes,
-                            cols,
-                            rows,
-                            app.config.reader.halfblock_filter,
-                        )
+                    if !pane.halfblock_cache.contains_key(&key)
+                        && pane.pending_image_decodes.insert(key)
                     {
-                        if pane.halfblock_cache.len() >= 50 {
-                            pane.halfblock_cache.clear();
+                        if let Some(path) = pane.loaded_images.get(&img.url).cloned().or_else(|| {
+                            crate::graphics::cache::get_cached_image_path(&img.url)
+                        }) {
+                            to_request.push((img.url.clone(), path, cols, rows));
                         }
-                        pane.halfblock_cache.insert((url, cols, rows), hb_lines);
                     }
                 }
+            }
+            for (url, path, cols, rows) in to_request {
+                app.send_decode_halfblock_image(url, path, cols, rows);
             }
         }
     }

@@ -104,6 +104,16 @@ pub enum NetworkCommand {
         limit: usize,
         timeout: u64,
     },
+    DecodeHalfblockImage {
+        url: String,
+        path: std::path::PathBuf,
+        cols: usize,
+        rows: usize,
+        filter: crate::config::HalfblockFilter,
+    },
+    PredecodeKittyImage {
+        path: std::path::PathBuf,
+    },
 }
 
 pub enum NetworkEvent {
@@ -130,6 +140,12 @@ pub enum NetworkEvent {
     ImageLoaded {
         url: String,
         path: std::path::PathBuf,
+    },
+    HalfblockImageDecoded {
+        url: String,
+        cols: usize,
+        rows: usize,
+        lines: Vec<ratatui::text::Line<'static>>,
     },
     CategoryMembersLoaded {
         category: String,
@@ -275,6 +291,31 @@ pub fn run_worker(cmd_rx: Receiver<NetworkCommand>, ev_tx: Sender<NetworkEvent>)
                 {
                     let _ = ev_tx.send(NetworkEvent::CategoryMembersLoaded { category, members });
                 }
+            }
+            NetworkCommand::DecodeHalfblockImage {
+                url,
+                path,
+                cols,
+                rows,
+                filter,
+            } => {
+                if let Ok(bytes) = std::fs::read(&path) {
+                    if let Some(lines) =
+                        crate::graphics::halfblocks::render_halfblock_image_from_bytes(
+                            &bytes, cols, rows, filter,
+                        )
+                    {
+                        let _ = ev_tx.send(NetworkEvent::HalfblockImageDecoded {
+                            url,
+                            cols,
+                            rows,
+                            lines,
+                        });
+                    }
+                }
+            }
+            NetworkCommand::PredecodeKittyImage { path } => {
+                crate::graphics::kitty::predecode_kitty_image(&path);
             }
         });
     }

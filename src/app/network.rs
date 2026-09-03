@@ -73,4 +73,24 @@ impl App {
             });
         }
     }
+
+    pub fn send_decode_halfblock_image(
+        &self,
+        url: String,
+        path: std::path::PathBuf,
+        cols: usize,
+        rows: usize,
+    ) {
+        self.network.send(NetworkCommand::DecodeHalfblockImage {
+            url,
+            path,
+            cols,
+            rows,
+            filter: self.config.reader.halfblock_filter,
+        });
+    }
+
+    pub fn send_predecode_kitty_image(&self, path: std::path::PathBuf) {
+        self.network.send(NetworkCommand::PredecodeKittyImage { path });
+    }
 }

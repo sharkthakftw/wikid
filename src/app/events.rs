@@ -58,6 +58,12 @@ impl App {
                         show_images: self.config.reader.show_images,
                         max_image_height: self.config.reader.max_image_height,
                     };
+                    let resolved_proto =
+                        crate::graphics::resolve_protocol(self.config.reader.image_protocol);
+                    let mut to_decode = Vec::new();
+                    let mut to_predecode_kitty = Vec::new();
+                    let mut to_fetch = Vec::new();
+
                     if let Some(pane) = self.find_pane_mut(pane_id) {
                         pane.is_loading = false;
                         pane.loading_title = None;
@@ -81,10 +87,10 @@ impl App {
                         } else {
                             None
                         };
-                        let image_urls: Vec<String> = parsed_doc
+                        let image_targets: Vec<(String, usize, usize)> = parsed_doc
                             .images
                             .iter()
-                            .map(|img| img.url.clone())
+                            .map(|img| (img.url.clone(), img.width_cols, img.height_lines))
                             .collect();
                         pane.content = PaneContent::ArticleText {
                             title,
@@ -95,16 +101,85 @@ impl App {
                         pane.opened_at = Some(std::time::Instant::now());
                         pane.has_marked_read = false;
                         pane.selected_link_idx = initial_link_idx;
-                        for img_url in image_urls {
-                            self.send_fetch_image(img_url);
+                        for (img_url, cols, rows) in image_targets {
+                            if let Some(path) =
+                                crate::graphics::cache::get_cached_image_path(&img_url)
+                            {
+                                if resolved_proto.is_halfblocks() {
+                                    let key = (img_url.clone(), cols, rows);
+                                    if !pane.halfblock_cache.contains_key(&key)
+                                        && pane.pending_image_decodes.insert(key)
+                                    {
+                                        to_decode.push((img_url, path, cols, rows));
+                                    }
+                                } else if resolved_proto.is_kitty() {
+                                    to_predecode_kitty.push(path);
+                                }
+                            } else {
+                                to_fetch.push(img_url);
+                            }
                         }
+                    }
+
+                    for (img_url, path, cols, rows) in to_decode {
+                        self.send_decode_halfblock_image(img_url, path, cols, rows);
+                    }
+                    for path in to_predecode_kitty {
+                        self.send_predecode_kitty_image(path);
+                    }
+                    for img_url in to_fetch {
+                        self.send_fetch_image(img_url);
                     }
                 }
             }
             NetworkEvent::ImageLoaded { url, path } => {
+                let resolved_proto =
+                    crate::graphics::resolve_protocol(self.config.reader.image_protocol);
+                if resolved_proto.is_kitty() {
+                    self.send_predecode_kitty_image(path.clone());
+                }
+                let mut to_decode = Vec::new();
                 for tab in &mut self.tabs {
                     for pane in &mut tab.panes {
                         pane.loaded_images.insert(url.clone(), path.clone());
+                        if resolved_proto.is_halfblocks() {
+                            if let PaneContent::ArticleText { parsed_doc, .. } = &pane.content {
+                                for img in &parsed_doc.images {
+                                    if img.url == url {
+                                        let key = (url.clone(), img.width_cols, img.height_lines);
+                                        if !pane.halfblock_cache.contains_key(&key)
+                                            && pane.pending_image_decodes.insert(key)
+                                        {
+                                            to_decode.push((
+                                                url.clone(),
+                                                path.clone(),
+                                                img.width_cols,
+                                                img.height_lines,
+                                            ));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                for (u, p, c, r) in to_decode {
+                    self.send_decode_halfblock_image(u, p, c, r);
+                }
+            }
+            NetworkEvent::HalfblockImageDecoded {
+                url,
+                cols,
+                rows,
+                lines,
+            } => {
+                for tab in &mut self.tabs {
+                    for pane in &mut tab.panes {
+                        pane.pending_image_decodes.remove(&(url.clone(), cols, rows));
+                        if pane.halfblock_cache.len() >= 50 {
+                            pane.halfblock_cache.clear();
+                        }
+                        pane.halfblock_cache.insert((url.clone(), cols, rows), lines.clone());
                     }
                 }
             }

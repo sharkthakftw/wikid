@@ -90,6 +90,7 @@ pub struct Pane {
     pub loaded_images: std::collections::HashMap<String, std::path::PathBuf>,
     pub halfblock_cache:
         std::collections::HashMap<(String, usize, usize), Vec<ratatui::text::Line<'static>>>,
+    pub pending_image_decodes: std::collections::HashSet<(String, usize, usize)>,
 
     pub history_back: Vec<String>,
     pub history_forward: Vec<String>,
@@ -119,6 +120,7 @@ impl Pane {
             toc_focused: false,
             loaded_images: std::collections::HashMap::new(),
             halfblock_cache: std::collections::HashMap::new(),
+            pending_image_decodes: std::collections::HashSet::new(),
 
             history_back: Vec::new(),
             history_forward: Vec::new(),
