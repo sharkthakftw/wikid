@@ -15,7 +15,7 @@ pub use categories::{
 pub use daily_feed::{
     compute_daily_feed_modal_area, get_feed_entries, get_ongoing_links, get_otd_tab_at,
     get_recent_deaths_links, parse_onthisday_event, parse_story_html, render_daily_feed_modal,
-    DailyFeedKind, DailyFeedModalState, FeedEntry, OnThisDayTab,
+    DailyFeedCache, DailyFeedKind, DailyFeedModalState, FeedEntry, OnThisDayTab,
 };
 pub use help::{compute_help_modal_area, render_help_modal};
 pub use lists::{

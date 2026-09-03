@@ -10,6 +10,7 @@ impl App {
             cursor_idx: 0,
             link_idx: 0,
             otd_tab: crate::ui::modals::OnThisDayTab::Events,
+            cache: std::cell::RefCell::new(crate::ui::modals::DailyFeedCache::default()),
         });
         self.input_mode = InputMode::DailyFeedModal;
     }
