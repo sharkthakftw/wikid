@@ -74,6 +74,20 @@ fn parse_feed_items(query: WikiFeedQuery) -> Vec<FeedItem> {
     items
 }
 
+fn query_feed_items(req: ureq::Request, timeout_secs: u64) -> Result<Vec<FeedItem>, String> {
+    let req = req
+        .query("action", "query")
+        .query("prop", "description|extracts|categories")
+        .query("exintro", "1")
+        .query("explaintext", "1")
+        .query("clshow", "!hidden")
+        .query("cllimit", "15")
+        .query("format", "json");
+    let feed_resp: WikiFeedResponse =
+        super::send_request_json(req, timeout_secs).map_err(|e| e.to_string())?;
+    Ok(feed_resp.query.map(parse_feed_items).unwrap_or_default())
+}
+
 fn fetch_category_items(
     agent: &ureq::Agent,
     category: &str,
@@ -81,47 +95,23 @@ fn fetch_category_items(
 ) -> Result<Vec<FeedItem>, String> {
     let url = "https://en.wikipedia.org/w/api.php";
     let category_title = format!("Category:{}", category);
-    let res = agent
+    let req = agent
         .get(url)
-        .timeout(std::time::Duration::from_secs(timeout_secs.max(1)))
-        .query("action", "query")
         .query("generator", "categorymembers")
         .query("gcmtitle", &category_title)
         .query("gcmtype", "page")
-        .query("gcmlimit", "2")
-        .query("prop", "description|extracts|categories")
-        .query("exintro", "1")
-        .query("explaintext", "1")
-        .query("clshow", "!hidden")
-        .query("cllimit", "15")
-        .query("format", "json")
-        .call()
-        .map_err(|e| format!("network error: {}", e))?;
-
-    let feed_resp: WikiFeedResponse = res.into_json().map_err(|e| format!("parse error: {}", e))?;
-    Ok(feed_resp.query.map(parse_feed_items).unwrap_or_default())
+        .query("gcmlimit", "2");
+    query_feed_items(req, timeout_secs)
 }
 
 fn fetch_random_items(agent: &ureq::Agent, timeout_secs: u64) -> Result<Vec<FeedItem>, String> {
     let url = "https://en.wikipedia.org/w/api.php";
-    let res = agent
+    let req = agent
         .get(url)
-        .timeout(std::time::Duration::from_secs(timeout_secs.max(1)))
-        .query("action", "query")
         .query("generator", "random")
         .query("grnnamespace", "0")
-        .query("grnlimit", "3")
-        .query("prop", "description|extracts|categories")
-        .query("exintro", "1")
-        .query("explaintext", "1")
-        .query("clshow", "!hidden")
-        .query("cllimit", "15")
-        .query("format", "json")
-        .call()
-        .map_err(|e| format!("network error: {}", e))?;
-
-    let feed_resp: WikiFeedResponse = res.into_json().map_err(|e| format!("parse error: {}", e))?;
-    Ok(feed_resp.query.map(parse_feed_items).unwrap_or_default())
+        .query("grnlimit", "3");
+    query_feed_items(req, timeout_secs)
 }
 
 pub fn fetch_feed_batch(agent: &ureq::Agent, timeout_secs: u64) -> Result<Vec<FeedItem>, String> {
