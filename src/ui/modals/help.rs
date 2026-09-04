@@ -67,6 +67,7 @@ pub fn render_help_modal(f: &mut Frame, app: &crate::app::App, size: Rect) {
             Line::from(format!("   {}-t               create new tab", opt_label)),
             Line::from(format!("   {}-h/l             switch to prev / next tab", opt_label)),
             Line::from(format!("   {}-0..9            switch to tab 1-10", opt_label)),
+            Line::from("   %                   visit previous tab"),
             Line::from(""),
             Line::from(vec![Span::styled(
                 " search",
@@ -173,6 +174,7 @@ pub fn render_help_modal(f: &mut Frame, app: &crate::app::App, size: Rect) {
             Line::from(format!("   {}-t               create new tab", opt_label)),
             Line::from(format!("   {}-h/l             switch to prev / next tab", opt_label)),
             Line::from(format!("   {}-0..9            switch to tab 1-10", opt_label)),
+            Line::from("   %                   visit previous tab"),
             Line::from(""),
             Line::from(vec![Span::styled(
                 " search",

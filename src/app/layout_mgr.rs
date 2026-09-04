@@ -30,28 +30,40 @@ impl App {
         let name = "new tab".to_string();
         self.tabs.push(Tab::new(name, self.next_pane_id));
         self.next_pane_id += 1;
+        self.prev_tab_idx = Some(self.active_tab_idx);
         self.active_tab_idx = self.tabs.len() - 1;
     }
 
     pub fn next_tab(&mut self) {
-        if !self.tabs.is_empty() {
-            self.active_tab_idx = (self.active_tab_idx + 1) % self.tabs.len();
+        if self.tabs.len() > 1 {
+            let next = (self.active_tab_idx + 1) % self.tabs.len();
+            self.switch_to_tab(next);
         }
     }
 
     pub fn prev_tab(&mut self) {
-        if !self.tabs.is_empty() {
-            if self.active_tab_idx == 0 {
-                self.active_tab_idx = self.tabs.len() - 1;
+        if self.tabs.len() > 1 {
+            let prev = if self.active_tab_idx == 0 {
+                self.tabs.len() - 1
             } else {
-                self.active_tab_idx -= 1;
-            }
+                self.active_tab_idx - 1
+            };
+            self.switch_to_tab(prev);
         }
     }
 
     pub fn switch_to_tab(&mut self, idx: usize) {
-        if idx < self.tabs.len() {
+        if idx < self.tabs.len() && idx != self.active_tab_idx {
+            self.prev_tab_idx = Some(self.active_tab_idx);
             self.active_tab_idx = idx;
+        }
+    }
+
+    pub fn toggle_alternate_tab(&mut self) {
+        if let Some(prev_idx) = self.prev_tab_idx {
+            if prev_idx < self.tabs.len() && prev_idx != self.active_tab_idx {
+                self.switch_to_tab(prev_idx);
+            }
         }
     }
 
@@ -63,6 +75,13 @@ impl App {
             self.close_current_tab();
         } else if self.tabs.len() > 1 {
             let removed_tab = self.tabs.remove(idx);
+            if let Some(prev) = self.prev_tab_idx {
+                if prev == idx {
+                    self.prev_tab_idx = None;
+                } else if prev > idx {
+                    self.prev_tab_idx = Some(prev - 1);
+                }
+            }
             for pane in removed_tab.panes {
                 if let Some(title) = pane.title() {
                     self.closed_tabs_stack.push(crate::app::ClosedTabState {
@@ -81,8 +100,16 @@ impl App {
 
     pub fn close_current_tab(&mut self) {
         self.maybe_mark_article_read();
+        let closed_idx = self.active_tab_idx;
         if self.tabs.len() > 1 {
-            let removed_tab = self.tabs.remove(self.active_tab_idx);
+            let removed_tab = self.tabs.remove(closed_idx);
+            if let Some(prev) = self.prev_tab_idx {
+                if prev == closed_idx {
+                    self.prev_tab_idx = None;
+                } else if prev > closed_idx {
+                    self.prev_tab_idx = Some(prev - 1);
+                }
+            }
             for pane in removed_tab.panes {
                 if let Some(title) = pane.title() {
                     self.closed_tabs_stack.push(crate::app::ClosedTabState {

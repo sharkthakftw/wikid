@@ -95,6 +95,12 @@ pub const COMMANDS: &[CommandDef] = &[
         execute: |app| app.new_tab(),
     },
     CommandDef {
+        id: "alternate_tab",
+        label: "visit previous tab",
+        shortcut: Some("%"),
+        execute: |app| app.toggle_alternate_tab(),
+    },
+    CommandDef {
         id: "settings",
         label: "settings",
         shortcut: Some(","),

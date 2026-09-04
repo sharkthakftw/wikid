@@ -270,6 +270,9 @@ pub fn handle_normal_mode(app: &mut App, key: KeyEvent, term_width: u16, term_he
             KeyCode::Char('v') => {
                 app.activate_selected_in_split(SplitDirection::Vertical);
             }
+            KeyCode::Char('%') => {
+                app.toggle_alternate_tab();
+            }
             KeyCode::Char('t')
                 if key
                     .modifiers
