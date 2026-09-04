@@ -150,6 +150,21 @@ impl App {
         }
     }
 
+    pub fn activate_selected_in_background_tab(&mut self) {
+        let selected_title = self.active_selected_target();
+
+        if let Some(title) = selected_title.filter(|t| is_article_link(t)) {
+            let cur_tab = self.active_tab_idx;
+            self.new_tab();
+            let pane_id = self.active_pane().id;
+            let active_pane = self.active_pane_mut();
+            active_pane.prepare_for_article_fetch(&title);
+            self.send_fetch_article(pane_id, title.clone());
+            self.active_tab_idx = cur_tab;
+            self.set_status_message(format!("opened '{}' in background tab", title));
+        }
+    }
+
     pub fn activate_selected_in_split(&mut self, direction: SplitDirection) {
         let selected_title = self.active_selected_target();
 

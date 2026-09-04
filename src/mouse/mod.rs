@@ -4,7 +4,7 @@ pub mod scrollbar;
 pub mod selection;
 pub mod types;
 
-pub use clicks::{handle_left_click, handle_mouse_move};
+pub use clicks::{handle_left_click, handle_middle_click, handle_mouse_move};
 pub use scroll::handle_scroll;
 pub use scrollbar::{active_pane_rect, handle_scrollbar_down, handle_scrollbar_drag};
 pub use selection::{handle_selection_down, handle_selection_drag, handle_selection_up};
@@ -30,6 +30,9 @@ pub fn handle_mouse_event(app: &mut App, mouse: MouseEvent, term_width: u16, ter
                     handle_selection_down(app, mouse.column, mouse.row, term_width, term_height);
                 handle_left_click(app, mouse.column, mouse.row, term_width, term_height, alt);
             }
+        }
+        MouseEventKind::Down(MouseButton::Middle) => {
+            handle_middle_click(app, mouse.column, mouse.row, term_width, term_height);
         }
         MouseEventKind::Drag(MouseButton::Left) => {
             if app.scroll_drag.is_some() {

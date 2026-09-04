@@ -19,6 +19,166 @@ pub fn handle_left_click(
     handle_workspace_left_click(app, col, row, term_width, term_height, alt);
 }
 
+pub fn handle_middle_click(
+    app: &mut App,
+    col: u16,
+    row: u16,
+    term_width: u16,
+    term_height: u16,
+) {
+    let size = Rect::new(0, 0, term_width, term_height);
+
+    if row == 0 {
+        if let Some(tab_idx) = crate::ui::tab_bar::get_tab_at_col(app, term_width, col) {
+            app.close_tab(tab_idx);
+        }
+        return;
+    }
+
+    if app.feed.active {
+        if let Some(item) = app.feed.current_item().cloned() {
+            let cur_tab = app.active_tab_idx;
+            app.new_tab();
+            let pane_id = app.active_pane().id;
+            app.active_pane_mut().is_loading = true;
+            app.send_fetch_article(pane_id, item.title.clone());
+            app.active_tab_idx = cur_tab;
+            app.set_status_message(format!("opened '{}' in background tab", item.title));
+        }
+        return;
+    }
+
+    if app.input_mode == InputMode::DailyFeedModal {
+        if let Some((_, _, target)) = crate::ui::modals::get_daily_feed_item_at(app, col, row, size) {
+            let cur_tab = app.active_tab_idx;
+            app.new_tab();
+            let pane_id = app.active_pane().id;
+            app.active_pane_mut().is_loading = true;
+            app.send_fetch_article(pane_id, target.clone());
+            app.active_tab_idx = cur_tab;
+            app.set_status_message(format!("opened '{}' in background tab", target));
+        }
+        return;
+    }
+
+    if app.input_mode != InputMode::Normal {
+        return;
+    }
+
+    if app.zen_mode {
+        let zen_rect = crate::ui::compute_zen_area(Rect::new(0, 0, term_width, term_height));
+        if col >= zen_rect.x
+            && col < zen_rect.x + zen_rect.width
+            && row >= zen_rect.y
+            && row < zen_rect.y + zen_rect.height
+        {
+            let pane = app.active_pane_mut();
+            if let PaneContent::ArticleText { parsed_doc, .. } = &pane.content {
+                if let Some(link_idx) = crate::ui::pane_view::get_link_at_coord(
+                    parsed_doc,
+                    pane.scroll_offset,
+                    zen_rect,
+                    col,
+                    row,
+                ) {
+                    pane.selected_link_idx = Some(link_idx);
+                    app.activate_selected_in_background_tab();
+                }
+            }
+        }
+        return;
+    }
+
+    if row >= 1 && row < term_height.saturating_sub(1) {
+        let main_rect = Rect::new(0, 1, term_width, term_height.saturating_sub(2));
+        let tab = app.active_tab_mut();
+        let rects = tab.layout_root.compute_rects(main_rect);
+
+        for (pane_idx, rect) in rects {
+            if col >= rect.x
+                && col < rect.x + rect.width
+                && row >= rect.y
+                && row < rect.y + rect.height
+            {
+                tab.active_pane_idx = pane_idx;
+                let pane = &mut tab.panes[pane_idx];
+                match &pane.content {
+                    PaneContent::SearchResults { items, .. } => {
+                        let inner_y = rect.y + 1;
+                        if row >= inner_y && row < rect.y + rect.height.saturating_sub(1) {
+                            let row_in_pane = (row - inner_y) as usize;
+                            let clicked_line = pane.scroll_offset + row_in_pane;
+                            let inner_width = (rect.width as usize).saturating_sub(4);
+                            if let Some(item_idx) = crate::ui::pane_view::get_search_result_at_line(
+                                items,
+                                pane.selected_idx,
+                                inner_width,
+                                clicked_line,
+                            ) {
+                                pane.selected_idx = item_idx;
+                                let title = items[item_idx].title.clone();
+                                let cur_tab = app.active_tab_idx;
+                                app.new_tab();
+                                let pane_id = app.active_pane().id;
+                                app.active_pane_mut().is_loading = true;
+                                app.send_fetch_article(pane_id, title.clone());
+                                app.active_tab_idx = cur_tab;
+                                app.set_status_message(format!("opened '{}' in background tab", title));
+                            }
+                        }
+                    }
+                    PaneContent::Empty => {
+                        let recent_articles = app.get_continue_reading_articles();
+                        let inner_height = (rect.height as usize).saturating_sub(2);
+                        let show_recent = !recent_articles.is_empty()
+                            && inner_height >= (crate::ui::launch_screen::LOGO.len() + 8);
+
+                        if show_recent {
+                            let displayed_count = recent_articles.len().min(7);
+                            let total_content_height =
+                                crate::ui::launch_screen::LOGO.len() + 4 + displayed_count + 2;
+                            let v_pad = inner_height.saturating_sub(total_content_height) / 2;
+                            let start_row = rect.y
+                                + 1
+                                + (v_pad as u16)
+                                + (crate::ui::launch_screen::LOGO.len() as u16)
+                                + 6;
+
+                            if row >= start_row && row < start_row + (displayed_count as u16) {
+                                let idx = (row - start_row) as usize;
+                                if idx < recent_articles.len() {
+                                    let title = recent_articles[idx].clone();
+                                    let cur_tab = app.active_tab_idx;
+                                    app.new_tab();
+                                    let pane_id = app.active_pane().id;
+                                    app.active_pane_mut().is_loading = true;
+                                    app.send_fetch_article(pane_id, title.clone());
+                                    app.active_tab_idx = cur_tab;
+                                    app.set_status_message(format!("opened '{}' in background tab", title));
+                                }
+                            }
+                        }
+                    }
+                    PaneContent::ArticleText { parsed_doc, .. } => {
+                        if let Some(link_idx) = crate::ui::pane_view::get_link_at_coord(
+                            parsed_doc,
+                            pane.scroll_offset,
+                            rect,
+                            col,
+                            row,
+                        ) {
+                            pane.selected_link_idx = Some(link_idx);
+                            app.activate_selected_in_background_tab();
+                        }
+                    }
+                    _ => {}
+                }
+                break;
+            }
+        }
+    }
+}
+
 fn handle_modal_left_click(
     app: &mut App,
     col: u16,

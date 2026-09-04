@@ -55,6 +55,30 @@ impl App {
         }
     }
 
+    pub fn close_tab(&mut self, idx: usize) {
+        if idx >= self.tabs.len() {
+            return;
+        }
+        if idx == self.active_tab_idx {
+            self.close_current_tab();
+        } else if self.tabs.len() > 1 {
+            let removed_tab = self.tabs.remove(idx);
+            for pane in removed_tab.panes {
+                if let Some(title) = pane.title() {
+                    self.closed_tabs_stack.push(crate::app::ClosedTabState {
+                        title,
+                        scroll_offset: pane.scroll_offset,
+                        history_back: pane.history_back,
+                        history_forward: pane.history_forward,
+                    });
+                }
+            }
+            if self.active_tab_idx > idx {
+                self.active_tab_idx -= 1;
+            }
+        }
+    }
+
     pub fn close_current_tab(&mut self) {
         self.maybe_mark_article_read();
         if self.tabs.len() > 1 {

@@ -22,6 +22,17 @@ pub fn handle_normal_mode(app: &mut App, key: KeyEvent, term_width: u16, term_he
                 app.confirm_action = Some(crate::app::ConfirmAction::ResetFeed);
                 app.input_mode = crate::app::InputMode::Confirm;
             }
+            KeyCode::Enter if key.modifiers.contains(KeyModifiers::ALT) => {
+                if let Some(item) = app.feed.current_item().cloned() {
+                    let cur_tab = app.active_tab_idx;
+                    app.new_tab();
+                    let pane_id = app.active_pane().id;
+                    app.active_pane_mut().is_loading = true;
+                    app.send_fetch_article(pane_id, item.title.clone());
+                    app.active_tab_idx = cur_tab;
+                    app.set_status_message(format!("opened '{}' in background tab", item.title));
+                }
+            }
             KeyCode::Enter => {
                 if let Some(item) = app.feed.current_item().cloned() {
                     app.feed.active = false;
@@ -389,7 +400,7 @@ pub fn handle_normal_mode(app: &mut App, key: KeyEvent, term_width: u16, term_he
                 }
             }
             KeyCode::Enter if key.modifiers.contains(KeyModifiers::ALT) => {
-                app.activate_selected_in_new_tab();
+                app.activate_selected_in_background_tab();
             }
             KeyCode::Enter => {
                 app.activate_selected(term_height);
