@@ -19,6 +19,7 @@ a feature-rich terminal wikipedia client.
 - **inline article images (`I`)**: rich terminal graphics via Kitty graphics protocol with fallback to Unicode halfblocks.
 - **custom saved lists (`m` / `M`)**: save articles into custom lists stored in `~/.config/wikid/saved_articles.json`.
 - **live settings (`,`)**: in-app settings modal with instant hot-reloading.
+- **instant qr code (`:qr`)**: scan terminal qr code to hand off reading to mobile.
 
 ## installation
 

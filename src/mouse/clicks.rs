@@ -262,6 +262,18 @@ fn handle_modal_left_click(
         return true;
     }
 
+    if app.input_mode == InputMode::QrModal {
+        let qr_area = crate::ui::modals::compute_qr_modal_area(size);
+        if col < qr_area.x
+            || col >= qr_area.x + qr_area.width
+            || row < qr_area.y
+            || row >= qr_area.y + qr_area.height
+        {
+            app.close_qr_modal();
+        }
+        return true;
+    }
+
     if app.input_mode == InputMode::Search {
         let search_area = crate::ui::modals::search::compute_search_modal_area(size);
         if col < search_area.x

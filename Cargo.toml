@@ -20,6 +20,7 @@ tl = "0.7.8"
 unicode-width = "0.1"
 toml = "0.8.23"
 image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
+fast_qr = { version = "0.14", default-features = false }
 
 [profile.release]
 opt-level = 3

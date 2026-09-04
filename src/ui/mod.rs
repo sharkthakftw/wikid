@@ -108,6 +108,10 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         modals::render_palette_modal(f, app, size);
     }
 
+    if app.input_mode == InputMode::QrModal {
+        modals::render_qr_modal(f, app, size);
+    }
+
     let is_modal_open = (app.input_mode != InputMode::Normal
         && app.input_mode != InputMode::LocalSearch)
         || app.tabs.iter().any(|t| t.panes.iter().any(|p| p.show_toc))

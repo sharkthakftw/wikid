@@ -55,6 +55,7 @@ pub struct App {
     pub scroll_drag: Option<crate::mouse::ScrollDragTarget>,
     pub audio_player: crate::audio::AudioPlayer,
     pub command_palette: crate::app::types::CommandPaletteState,
+    pub qr_modal: Option<crate::app::types::QrModalState>,
     pub graphics: GraphicsState,
 
     pub(crate) next_pane_id: usize,
@@ -114,6 +115,7 @@ impl App {
             scroll_drag: None,
             audio_player: crate::audio::AudioPlayer::new(),
             command_palette: crate::app::types::CommandPaletteState::default(),
+            qr_modal: None,
             graphics: GraphicsState::default(),
 
             next_pane_id: 1,
@@ -206,5 +208,60 @@ impl App {
             "disabled"
         };
         self.set_status_message(format!("inline images {}", status));
+    }
+
+    pub fn open_qr_modal(&mut self) {
+        let (title, url) = match &self.active_pane().content {
+            crate::app::PaneContent::ArticleText { title, .. } => (
+                title.clone(),
+                format!("https://en.wikipedia.org/wiki/{}", title.replace(' ', "_")),
+            ),
+            crate::app::PaneContent::SearchResults { query, .. } => (
+                format!("search: {}", query),
+                format!(
+                    "https://en.wikipedia.org/wiki/Special:Search?search={}",
+                    query.replace(' ', "_")
+                ),
+            ),
+            _ => {
+                if self.feed.active {
+                    if let Some(item) = self.feed.current_item() {
+                        (
+                            item.title.clone(),
+                            format!("https://en.wikipedia.org/wiki/{}", item.title.replace(' ', "_")),
+                        )
+                    } else {
+                        self.set_status_message("no article to share");
+                        return;
+                    }
+                } else {
+                    self.set_status_message("no article to share");
+                    return;
+                }
+            }
+        };
+
+        if let Ok(qrcode) = fast_qr::qr::QRBuilder::new(url.as_bytes()).build() {
+            let size = qrcode.size;
+            let mut matrix = vec![vec![false; size]; size];
+            for y in 0..size {
+                for x in 0..size {
+                    matrix[y][x] = qrcode[y][x].value();
+                }
+            }
+            self.qr_modal = Some(crate::app::types::QrModalState {
+                title,
+                url,
+                matrix,
+            });
+            self.input_mode = InputMode::QrModal;
+        } else {
+            self.set_status_message("failed to generate qr code");
+        }
+    }
+
+    pub fn close_qr_modal(&mut self) {
+        self.qr_modal = None;
+        self.input_mode = InputMode::Normal;
     }
 }

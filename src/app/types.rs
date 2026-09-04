@@ -34,6 +34,14 @@ pub enum InputMode {
     Categories,
     DailyFeedModal,
     CommandPalette,
+    QrModal,
+}
+
+#[derive(Clone, Debug)]
+pub struct QrModalState {
+    pub title: String,
+    pub url: String,
+    pub matrix: Vec<Vec<bool>>,
 }
 
 pub fn is_article_link(title: &str) -> bool {

@@ -115,6 +115,12 @@ pub const COMMANDS: &[CommandDef] = &[
         execute: |app| app.copy_article_link(),
     },
     CommandDef {
+        id: "qr_code",
+        label: "get qr code",
+        shortcut: Some(""),
+        execute: |app| app.open_qr_modal(),
+    },
+    CommandDef {
         id: "restore_session",
         label: "restore session",
         shortcut: Some("S"),
