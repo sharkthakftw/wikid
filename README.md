@@ -87,7 +87,8 @@ make install
 | **toggle feed** | `F` | toggle recommendation feed mode |
 | **link navigation** | `tab` / `shift-tab` | focus next / previous article link |
 | **open link** | `enter` | open link in active pane |
-| **open link in new tab** | `t`, `alt-enter`, `alt-click` | open link in a new tab |
+| **open in new tab** | `t`, `alt-click` | open link in a new focused tab |
+| **open in background tab** | `alt-enter`, `middle-click` | open link in a background tab |
 | **open link in split** | `s` / `v` | open link in horizontal (`s`) or vertical (`v`) split |
 | **copy link** | `y` | copy focused link to clipboard |
 | **copy article URL** | `Y` | copy current article URL to clipboard |
@@ -99,6 +100,7 @@ make install
 | **reopen closed** | `u` | reopen last closed tab or split pane |
 | **new tab** | `alt-t` | create a new empty tab |
 | **switch tabs** | `alt-h` / `alt-l` | switch to previous / next tab |
+| **visit previous tab** | `%` | switch to last visited tab |
 | **jump to tab** | `alt-0..9` | switch to tab 1-10 |
 | **categories** | `c` | view categories of current article |
 | **daily feeds (home)** | `f` / `n` / `d` / `t` | open featured article (`f`), news (`n`), on this day (`d`), trending (`t`) |
@@ -140,6 +142,7 @@ rounded_borders = false # enable/disable rounded borders
 icons = true # enable/disable icons
 scroll_indicator = true # enable/disable scroll indicator on the right edge
 stats = true # enable/disable live wikipedia statistics on launch screen
+dim_inactive_panes = false # enable/disable dimming unfocused panes in multi-pane splits
 
 [search]
 limit = 20 # maximum number of search results returned from wikipedia (5-50)
