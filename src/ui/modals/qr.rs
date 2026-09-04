@@ -38,10 +38,16 @@ pub fn render_qr_modal(f: &mut Frame, app: &App, size: Rect) {
         app.config.ui.rounded_borders,
     );
 
+    let h = inner.height as usize;
+    if h == 0 {
+        return;
+    }
+
     let n = qr_state.matrix.len();
     let quiet_zone = 2;
     let total_w = n + quiet_zone * 2;
     let total_h = n + quiet_zone * 2;
+    let qr_rows = total_h.div_ceil(2);
 
     let is_dark = |x: usize, y: usize| -> bool {
         if x < quiet_zone || x >= quiet_zone + n || y < quiet_zone || y >= quiet_zone + n {
@@ -51,25 +57,9 @@ pub fn render_qr_modal(f: &mut Frame, app: &App, size: Rect) {
         }
     };
 
-    let mut lines = Vec::new();
-
-    let title_line = Line::from(vec![Span::styled(
-        format!(" {} ", qr_state.title.to_lowercase()),
-        Style::default().fg(theme::PINK).bold(),
-    )])
-    .alignment(Alignment::Center);
-    lines.push(title_line);
-
-    let pad_left = (inner.width as usize).saturating_sub(total_w) / 2;
-
+    let mut qr_lines = Vec::with_capacity(qr_rows);
     for y in (0..total_h).step_by(2) {
-        let mut spans = Vec::with_capacity(total_w + 1);
-        if pad_left > 0 {
-            spans.push(Span::styled(
-                " ".repeat(pad_left),
-                Style::default().bg(theme::BG),
-            ));
-        }
+        let mut row_str = String::with_capacity(total_w);
         for x in 0..total_w {
             let top = is_dark(x, y);
             let bot = if y + 1 < total_h {
@@ -83,36 +73,88 @@ pub fn render_qr_modal(f: &mut Frame, app: &App, size: Rect) {
                 (false, true) => '▄',
                 (false, false) => ' ',
             };
-            spans.push(Span::styled(
-                ch.to_string(),
-                Style::default().fg(theme::PINK).bg(theme::BG),
-            ));
+            row_str.push(ch);
         }
-        lines.push(Line::from(spans));
+        qr_lines.push(
+            Line::from(vec![Span::styled(
+                row_str,
+                Style::default().fg(theme::PINK).bg(theme::BG),
+            )])
+            .alignment(Alignment::Center),
+        );
     }
 
-    let url_display = if qr_state.full_url.len() > inner.width as usize {
-        format!("{}…", &qr_state.full_url[..inner.width.saturating_sub(3) as usize])
+    let title_line = Line::from(vec![Span::styled(
+        format!(" {} ", qr_state.title.to_lowercase()),
+        Style::default().fg(theme::PINK).bold(),
+    )])
+    .alignment(Alignment::Center);
+
+    let max_url_len = (inner.width as usize).saturating_sub(3);
+    let url_display = if qr_state.full_url.chars().count() > inner.width as usize {
+        let truncated: String = qr_state.full_url.chars().take(max_url_len).collect();
+        format!("{}…", truncated)
     } else {
         qr_state.full_url.clone()
     };
-    lines.push(
-        Line::from(vec![Span::styled(
-            url_display,
-            Style::default().fg(theme::GREY),
-        )])
-        .alignment(Alignment::Center),
-    );
+    let url_line = Line::from(vec![Span::styled(
+        url_display,
+        Style::default().fg(theme::GREY),
+    )])
+    .alignment(Alignment::Center);
 
-    lines.push(
-        Line::from(vec![
-            Span::styled("esc/q", Style::default().fg(theme::YELLOW).bold()),
-            Span::styled(" close   ", Style::default().fg(theme::GREY)),
-            Span::styled("y", Style::default().fg(theme::YELLOW).bold()),
-            Span::styled(" copy link", Style::default().fg(theme::GREY)),
-        ])
-        .alignment(Alignment::Center),
-    );
+    let footer_line = Line::from(vec![
+        Span::styled("esc/q", Style::default().fg(theme::YELLOW).bold()),
+        Span::styled(" close   ", Style::default().fg(theme::GREY)),
+        Span::styled("y", Style::default().fg(theme::YELLOW).bold()),
+        Span::styled(" copy link", Style::default().fg(theme::GREY)),
+    ])
+    .alignment(Alignment::Center);
+
+    let mut lines = Vec::with_capacity(h);
+
+    if h < qr_rows + 3 {
+        lines.push(title_line);
+        lines.extend(qr_lines);
+        lines.push(url_line);
+        lines.push(footer_line);
+    } else {
+        let modal_center = h.saturating_sub(1) / 2;
+        let ideal_qr_start = modal_center.saturating_sub((qr_rows.saturating_sub(1)) / 2);
+        let qr_start = ideal_qr_start
+            .max(1)
+            .min(h.saturating_sub(qr_rows + 2));
+        let qr_end = qr_start + qr_rows;
+
+        let top_blanks = qr_start.saturating_sub(2);
+        for _ in 0..top_blanks {
+            lines.push(Line::from(""));
+        }
+        lines.push(title_line);
+        if qr_start >= 2 {
+            lines.push(Line::from(""));
+        }
+
+        lines.extend(qr_lines);
+
+        let lines_below = h.saturating_sub(qr_end);
+        let slack_after = lines_below.saturating_sub(2);
+        let gap1 = if slack_after >= 1 { 1 } else { 0 };
+        let gap2 = if slack_after >= 2 { 1 } else { 0 };
+        let bottom_pad = slack_after.saturating_sub(2);
+
+        for _ in 0..gap1 {
+            lines.push(Line::from(""));
+        }
+        lines.push(url_line);
+        for _ in 0..gap2 {
+            lines.push(Line::from(""));
+        }
+        lines.push(footer_line);
+        for _ in 0..bottom_pad {
+            lines.push(Line::from(""));
+        }
+    }
 
     let p = Paragraph::new(lines).style(Style::default().bg(theme::BG));
     f.render_widget(p, inner);
