@@ -91,10 +91,10 @@ pub fn render_qr_modal(f: &mut Frame, app: &App, size: Rect) {
         lines.push(Line::from(spans));
     }
 
-    let url_display = if qr_state.url.len() > inner.width as usize {
-        format!("{}…", &qr_state.url[..inner.width.saturating_sub(3) as usize])
+    let url_display = if qr_state.full_url.len() > inner.width as usize {
+        format!("{}…", &qr_state.full_url[..inner.width.saturating_sub(3) as usize])
     } else {
-        qr_state.url.clone()
+        qr_state.full_url.clone()
     };
     lines.push(
         Line::from(vec![Span::styled(

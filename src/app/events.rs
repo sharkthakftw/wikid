@@ -257,6 +257,23 @@ impl App {
                     .cached_members
                     .insert(category, members);
             }
+            NetworkEvent::UrlShortened { original_url, short_url } => {
+                if let Some(qr_modal) = &mut self.qr_modal {
+                    if qr_modal.full_url == original_url {
+                        if let Ok(qrcode) = fast_qr::qr::QRBuilder::new(short_url.as_bytes()).build() {
+                            let size = qrcode.size;
+                            let mut matrix = vec![vec![false; size]; size];
+                            for y in 0..size {
+                                for x in 0..size {
+                                    matrix[y][x] = qrcode[y][x].value();
+                                }
+                            }
+                            qr_modal.short_url = Some(short_url);
+                            qr_modal.matrix = matrix;
+                        }
+                    }
+                }
+            }
         }
     }
 

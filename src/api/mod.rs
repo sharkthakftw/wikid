@@ -5,6 +5,7 @@ pub mod feed;
 pub mod images;
 pub mod random;
 pub mod search;
+pub mod shorten;
 pub mod stats;
 pub mod updates;
 
@@ -114,8 +115,13 @@ pub enum NetworkCommand {
     PredecodeKittyImage {
         path: std::path::PathBuf,
     },
+    ShortenUrl {
+        url: String,
+        timeout: u64,
+    },
 }
 
+#[derive(Debug)]
 pub enum NetworkEvent {
     SearchResult {
         request_id: u64,
@@ -150,6 +156,10 @@ pub enum NetworkEvent {
     CategoryMembersLoaded {
         category: String,
         members: Vec<String>,
+    },
+    UrlShortened {
+        original_url: String,
+        short_url: String,
     },
     Error {
         request_id: u64,
@@ -316,6 +326,14 @@ pub fn run_worker(cmd_rx: Receiver<NetworkCommand>, ev_tx: Sender<NetworkEvent>)
             }
             NetworkCommand::PredecodeKittyImage { path } => {
                 crate::graphics::kitty::predecode_kitty_image(&path);
+            }
+            NetworkCommand::ShortenUrl { url, timeout } => {
+                if let Ok(short_url) = shorten::shorten_url(&agent, &url, timeout) {
+                    let _ = ev_tx.send(NetworkEvent::UrlShortened {
+                        original_url: url,
+                        short_url,
+                    });
+                }
             }
         });
     }

@@ -40,7 +40,8 @@ pub enum InputMode {
 #[derive(Clone, Debug)]
 pub struct QrModalState {
     pub title: String,
-    pub url: String,
+    pub full_url: String,
+    pub short_url: Option<String>,
     pub matrix: Vec<Vec<bool>>,
 }
 

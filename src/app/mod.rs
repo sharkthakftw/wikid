@@ -251,10 +251,15 @@ impl App {
             }
             self.qr_modal = Some(crate::app::types::QrModalState {
                 title,
-                url,
+                full_url: url.clone(),
+                short_url: None,
                 matrix,
             });
             self.input_mode = InputMode::QrModal;
+            self.network.send(crate::api::NetworkCommand::ShortenUrl {
+                url,
+                timeout: self.config.network.timeout,
+            });
         } else {
             self.set_status_message("failed to generate qr code");
         }
