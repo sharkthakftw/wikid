@@ -98,6 +98,10 @@ pub fn render_settings_modal(f: &mut Frame, app: &App, size: Rect) {
                 let val = app.config.ui.stats;
                 bool_span(val)
             }
+            SettingItem::DimInactivePanes => {
+                let val = app.config.ui.dim_inactive_panes;
+                bool_span(val)
+            }
             SettingItem::HeadingMarker => {
                 let val = app.config.reader.heading_marker;
                 bool_span(val)

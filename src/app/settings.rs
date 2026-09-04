@@ -11,6 +11,7 @@ pub enum SettingItem {
     Icons,
     ScrollIndicator,
     Stats,
+    DimInactivePanes,
     HeadingMarker,
     ScrollLines,
     UnderlineLinks,
@@ -39,6 +40,7 @@ impl SettingItem {
         SettingItem::Icons,
         SettingItem::ScrollIndicator,
         SettingItem::Stats,
+        SettingItem::DimInactivePanes,
         SettingItem::HeadingMarker,
         SettingItem::ScrollLines,
         SettingItem::UnderlineLinks,
@@ -66,7 +68,8 @@ impl SettingItem {
             SettingItem::RoundedBorders
             | SettingItem::Icons
             | SettingItem::ScrollIndicator
-            | SettingItem::Stats => "ui",
+            | SettingItem::Stats
+            | SettingItem::DimInactivePanes => "ui",
             SettingItem::HeadingMarker
             | SettingItem::ScrollLines
             | SettingItem::UnderlineLinks
@@ -95,6 +98,7 @@ impl SettingItem {
             SettingItem::Icons => "icons",
             SettingItem::ScrollIndicator => "scroll indicator",
             SettingItem::Stats => "wikipedia live stats",
+            SettingItem::DimInactivePanes => "dim inactive split panes",
             SettingItem::HeadingMarker => "heading marker",
             SettingItem::ScrollLines => "scroll lines per step",
             SettingItem::UnderlineLinks => "underline links",
@@ -128,6 +132,9 @@ impl SettingItem {
                 "display scrollbar track on right edge of content panes"
             }
             SettingItem::Stats => "display live wikipedia statistics on launch screen",
+            SettingItem::DimInactivePanes => {
+                "subtly dim unfocused panes in multi-pane splits"
+            }
             SettingItem::HeadingMarker => "display colored bar marker (▍) before section headings",
             SettingItem::ScrollLines => "number of lines to scroll per j/k press (1-20)",
             SettingItem::UnderlineLinks => "display underlined modifier on article links",
@@ -220,6 +227,9 @@ impl App {
                 }
                 SettingItem::Stats => {
                     self.config.ui.stats = !self.config.ui.stats;
+                }
+                SettingItem::DimInactivePanes => {
+                    self.config.ui.dim_inactive_panes = !self.config.ui.dim_inactive_panes;
                 }
                 SettingItem::HeadingMarker => {
                     self.config.reader.heading_marker = !self.config.reader.heading_marker;
@@ -419,6 +429,9 @@ impl App {
                 }
                 SettingItem::Stats => {
                     self.config.ui.stats = default_config.ui.stats;
+                }
+                SettingItem::DimInactivePanes => {
+                    self.config.ui.dim_inactive_panes = default_config.ui.dim_inactive_panes;
                 }
                 SettingItem::HeadingMarker => {
                     self.config.reader.heading_marker = default_config.reader.heading_marker;

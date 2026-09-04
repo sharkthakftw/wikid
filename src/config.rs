@@ -65,6 +65,7 @@ pub struct UiConfig {
     pub icons: bool,
     pub scroll_indicator: bool,
     pub stats: bool,
+    pub dim_inactive_panes: bool,
 }
 
 impl Default for UiConfig {
@@ -74,6 +75,7 @@ impl Default for UiConfig {
             icons: true,
             scroll_indicator: true,
             stats: true,
+            dim_inactive_panes: false,
         }
     }
 }

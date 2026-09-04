@@ -4,7 +4,7 @@ use crate::app::pane::Pane;
 use crate::theme;
 use ratatui::{
     layout::{Alignment, Rect},
-    style::{Style, Stylize},
+    style::{Modifier, Style, Stylize},
     text::{Line, Span},
     widgets::{Block, Paragraph},
     Frame,
@@ -97,6 +97,7 @@ pub fn render_search_pane(
     zen_mode: bool,
     scroll_indicator: bool,
     show_icons: bool,
+    should_dim: bool,
 ) {
     if items.is_empty() {
         let vertical_offset = (rect.height.saturating_sub(2) / 2) as usize;
@@ -104,9 +105,14 @@ pub fn render_search_pane(
         for _ in 0..vertical_offset {
             lines.push(Line::from(""));
         }
+        let no_res_style = if should_dim {
+            Style::default().fg(theme::RED).bold().add_modifier(Modifier::DIM)
+        } else {
+            Style::default().fg(theme::RED).bold()
+        };
         lines.push(Line::from(Span::styled(
             "no search results found",
-            Style::default().fg(theme::RED).bold(),
+            no_res_style,
         )));
         let no_res_p = Paragraph::new(lines)
             .block(block)
@@ -225,6 +231,13 @@ pub fn render_search_pane(
                 let line_idx = item_start + offset;
                 if line_idx >= view_start && line_idx < view_end {
                     rendered_lines.push(line);
+                }
+            }
+        }
+        if should_dim {
+            for line in &mut rendered_lines {
+                for span in &mut line.spans {
+                    span.style = span.style.add_modifier(Modifier::DIM);
                 }
             }
         }

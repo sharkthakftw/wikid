@@ -11,7 +11,7 @@ use crate::app::{App, PaneContent};
 use crate::theme;
 use ratatui::{
     layout::{Alignment, Rect},
-    style::{Style, Stylize},
+    style::{Modifier, Style, Stylize},
     text::{Line, Span},
     widgets::{Block, Padding, Paragraph},
     Frame,
@@ -60,6 +60,9 @@ fn render_pane_at(
         show_images: app.config.reader.show_images,
         max_image_height: app.config.reader.max_image_height,
     };
+    let has_multiple_panes = app.tabs[tab_idx].panes.len() > 1;
+    let should_dim = app.config.ui.dim_inactive_panes && !is_active && has_multiple_panes;
+
     let pane = &mut app.tabs[tab_idx].panes[pane_idx];
     pane.viewport_width = content_width;
     pane.ensure_parsed_width(render_opts);
@@ -99,13 +102,19 @@ fn render_pane_at(
 
     let border_type = app.config.ui.border_type();
 
+    let title_style = if should_dim {
+        Style::default().fg(theme::DARK_GREY).dim()
+    } else {
+        Style::default().fg(border_color)
+    };
+
     let block = if app.zen_mode {
         Block::default().padding(Padding::horizontal(1))
     } else {
         Block::bordered()
             .border_type(border_type)
             .border_style(Style::default().fg(border_color))
-            .title(title)
+            .title(Line::from(Span::styled(title, title_style)))
             .padding(Padding::horizontal(1))
     };
 
@@ -118,7 +127,7 @@ fn render_pane_at(
 
         let spinner = crate::ui::current_spinner_frame();
 
-        lines.push(Line::from(vec![
+        let mut loading_spans = vec![
             Span::styled(
                 format!("{} ", spinner),
                 Style::default().fg(theme::LIME).bold(),
@@ -127,7 +136,13 @@ fn render_pane_at(
                 "loading wikipedia data...",
                 Style::default().fg(theme::BEIGE).bold(),
             ),
-        ]));
+        ];
+        if should_dim {
+            for span in &mut loading_spans {
+                span.style = span.style.add_modifier(Modifier::DIM);
+            }
+        }
+        lines.push(Line::from(loading_spans));
         let loading_p = Paragraph::new(lines)
             .block(block)
             .alignment(Alignment::Center);
@@ -155,6 +170,7 @@ fn render_pane_at(
                 app.zen_mode,
                 app.config.ui.scroll_indicator,
                 app.config.ui.icons,
+                should_dim,
             );
         }
     } else if is_error {
@@ -165,9 +181,14 @@ fn render_pane_at(
             for _ in 0..vertical_offset {
                 lines.push(Line::from(""));
             }
+            let err_style = if should_dim {
+                Style::default().fg(theme::RED).bold().add_modifier(Modifier::DIM)
+            } else {
+                Style::default().fg(theme::RED).bold()
+            };
             lines.push(Line::from(Span::styled(
                 format!("error: {}", err_msg),
-                Style::default().fg(theme::RED).bold(),
+                err_style,
             )));
             let err_p = Paragraph::new(lines)
                 .block(block)

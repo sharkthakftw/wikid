@@ -267,6 +267,16 @@ pub fn render_article_pane(
         rendered_lines.push(line);
     }
 
+    let should_dim =
+        app.config.ui.dim_inactive_panes && !is_active && app.tabs[tab_idx].panes.len() > 1;
+    if should_dim {
+        for line in &mut rendered_lines {
+            for span in &mut line.spans {
+                span.style = span.style.add_modifier(Modifier::DIM);
+            }
+        }
+    }
+
     let inner_rect = block.inner(rect);
     let paragraph = Paragraph::new(rendered_lines).block(block);
     f.render_widget(paragraph, rect);
