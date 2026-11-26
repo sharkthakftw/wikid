@@ -217,33 +217,85 @@ pub fn render_settings_modal(f: &mut Frame, app: &App, size: Rect) {
         ]));
     }
 
-    lines.push(Line::from(""));
-    let focused_item = SettingItem::ALL
-        .get(app.modals.settings_modal.cursor_idx)
-        .copied();
-    if let Some(item) = focused_item {
-        lines.push(Line::from(vec![
-            Span::styled("   ", Style::default()),
-            Span::styled(
-                item.description(),
-                Style::default().fg(theme::BEIGE).italic(),
-            ),
-        ]));
+    let footer_lines = build_settings_footer(inner.width, app.modals.settings_modal.cursor_idx);
+    let (list_area, footer_area) = compute_settings_areas(inner, footer_lines.len() as u16);
+
+    let scroll =
+        compute_settings_scroll(app.modals.settings_modal.cursor_idx, list_area.height as usize);
+    let paragraph = Paragraph::new(lines).scroll((scroll as u16, 0));
+    f.render_widget(paragraph, list_area);
+
+    if footer_area.height > 0 {
+        f.render_widget(Paragraph::new(footer_lines), footer_area);
+    }
+}
+
+fn wrap_description(text: &str, max_width: usize) -> Vec<String> {
+    let mut lines = Vec::new();
+    let mut current = String::new();
+    let mut current_w = 0;
+
+    for word in text.split_whitespace() {
+        let word_w = unicode_width::UnicodeWidthStr::width(word);
+        if current.is_empty() {
+            current.push_str(word);
+            current_w = word_w;
+        } else if current_w + 1 + word_w <= max_width {
+            current.push(' ');
+            current.push_str(word);
+            current_w += 1 + word_w;
+        } else {
+            lines.push(current);
+            current = word.to_string();
+            current_w = word_w;
+        }
     }
 
-    lines.push(Line::from(""));
-    lines.push(Line::from(vec![
+    if !current.is_empty() {
+        lines.push(current);
+    }
+
+    lines
+}
+
+fn build_settings_footer(inner_width: u16, cursor_idx: usize) -> Vec<Line<'static>> {
+    let mut footer = Vec::new();
+    let div_w = (inner_width as usize).saturating_sub(4);
+    footer.push(Line::from(vec![
+        Span::styled("  ", Style::default()),
+        Span::styled("─".repeat(div_w), Style::default().fg(theme::DARK_GREY)),
+    ]));
+
+    if let Some(item) = SettingItem::ALL.get(cursor_idx).copied() {
+        let desc_w = (inner_width as usize).saturating_sub(4).max(10);
+        for desc_line in wrap_description(item.description(), desc_w) {
+            footer.push(Line::from(vec![
+                Span::styled("   ", Style::default()),
+                Span::styled(desc_line, Style::default().fg(theme::BEIGE).italic()),
+            ]));
+        }
+    }
+
+    footer.push(Line::from(vec![
         Span::styled("  ", Style::default()),
         Span::styled(
             "space/enter: toggle  │  h/l: adjust  │  r: reset",
             Style::default().fg(theme::GREY),
         ),
     ]));
+    footer
+}
 
-    let scroll =
-        compute_settings_scroll(app.modals.settings_modal.cursor_idx, inner.height as usize);
-    let paragraph = Paragraph::new(lines).scroll((scroll as u16, 0));
-    f.render_widget(paragraph, inner);
+fn compute_settings_areas(inner: Rect, footer_len: u16) -> (Rect, Rect) {
+    let footer_h = if inner.height > footer_len + 2 {
+        footer_len
+    } else {
+        0
+    };
+    let list_h = inner.height.saturating_sub(footer_h);
+    let list_area = Rect::new(inner.x, inner.y, inner.width, list_h);
+    let footer_area = Rect::new(inner.x, inner.y + list_h, inner.width, footer_h);
+    (list_area, footer_area)
 }
 
 fn bool_span(val: bool) -> Span<'static> {
@@ -288,7 +340,7 @@ pub fn compute_settings_total_lines() -> usize {
         }
         cur_line += 1;
     }
-    cur_line + 4
+    cur_line
 }
 
 pub fn compute_settings_scroll(cursor_idx: usize, inner_height: usize) -> usize {
@@ -302,11 +354,13 @@ pub fn get_setting_row_at(
     target_y: u16,
     cursor_idx: usize,
 ) -> Option<(usize, SettingItem, u16)> {
-    if target_y < inner.y || target_y >= inner.y + inner.height {
+    let footer_lines = build_settings_footer(inner.width, cursor_idx);
+    let (list_area, _) = compute_settings_areas(inner, footer_lines.len() as u16);
+    if target_y < list_area.y || target_y >= list_area.y + list_area.height {
         return None;
     }
-    let scroll = compute_settings_scroll(cursor_idx, inner.height as usize);
-    let row_in_inner = (target_y - inner.y) as usize + scroll;
+    let scroll = compute_settings_scroll(cursor_idx, list_area.height as usize);
+    let row_in_inner = (target_y - list_area.y) as usize + scroll;
     let mut cur_line = 0;
     let mut current_section = "";
 
