@@ -6,7 +6,7 @@ pub mod status_bar;
 pub mod tab_bar;
 pub mod utils;
 
-pub use utils::{truncate_to_width, truncate_with_ellipsis};
+pub use utils::{truncate_to_width, truncate_with_ellipsis, wrap_text};
 
 use crate::app::{App, InputMode};
 use ratatui::{

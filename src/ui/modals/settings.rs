@@ -230,34 +230,6 @@ pub fn render_settings_modal(f: &mut Frame, app: &App, size: Rect) {
     }
 }
 
-fn wrap_description(text: &str, max_width: usize) -> Vec<String> {
-    let mut lines = Vec::new();
-    let mut current = String::new();
-    let mut current_w = 0;
-
-    for word in text.split_whitespace() {
-        let word_w = unicode_width::UnicodeWidthStr::width(word);
-        if current.is_empty() {
-            current.push_str(word);
-            current_w = word_w;
-        } else if current_w + 1 + word_w <= max_width {
-            current.push(' ');
-            current.push_str(word);
-            current_w += 1 + word_w;
-        } else {
-            lines.push(current);
-            current = word.to_string();
-            current_w = word_w;
-        }
-    }
-
-    if !current.is_empty() {
-        lines.push(current);
-    }
-
-    lines
-}
-
 fn build_settings_footer(inner_width: u16, cursor_idx: usize) -> Vec<Line<'static>> {
     let mut footer = Vec::new();
     let div_w = (inner_width as usize).saturating_sub(4);
@@ -268,7 +240,7 @@ fn build_settings_footer(inner_width: u16, cursor_idx: usize) -> Vec<Line<'stati
 
     if let Some(item) = SettingItem::ALL.get(cursor_idx).copied() {
         let desc_w = (inner_width as usize).saturating_sub(4).max(10);
-        for desc_line in wrap_description(item.description(), desc_w) {
+        for desc_line in crate::ui::wrap_text(item.description(), desc_w) {
             footer.push(Line::from(vec![
                 Span::styled("   ", Style::default()),
                 Span::styled(desc_line, Style::default().fg(theme::BEIGE).italic()),

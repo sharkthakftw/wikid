@@ -46,7 +46,7 @@ pub fn compute_link_peek_area(peek: &crate::app::types::LinkPeekState, size: Rec
 
         let inner_w = candidate_w.saturating_sub(2) as usize;
         let extract_lines = if let Some(extract) = &peek.extract {
-            let wrapped = wrap_text(extract, inner_w);
+            let wrapped = crate::ui::wrap_text(extract, inner_w);
             wrapped.len().clamp(1, 7)
         } else if !has_desc {
             1usize
@@ -147,7 +147,7 @@ pub fn render_link_peek(f: &mut Frame, app: &App, size: Rect) {
         let max_extract_rows = (inner.height as usize).saturating_sub(lines.len());
         if max_extract_rows > 0 {
             if let Some(extract) = &peek.extract {
-                let wrapped = wrap_text(extract, inner.width as usize);
+                let wrapped = crate::ui::wrap_text(extract, inner.width as usize);
                 for (idx, w_line) in wrapped.into_iter().take(max_extract_rows).enumerate() {
                     let text = if idx == max_extract_rows - 1
                         && extract.len() > w_line.len() * max_extract_rows
@@ -180,32 +180,4 @@ pub fn render_link_peek(f: &mut Frame, app: &App, size: Rect) {
 
     let p = Paragraph::new(lines).style(Style::default().bg(theme::BG));
     f.render_widget(p, inner);
-}
-
-fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
-    let mut lines = Vec::new();
-    let mut current_line = String::new();
-    let mut current_len = 0;
-
-    for word in text.split_whitespace() {
-        let word_len = unicode_width::UnicodeWidthStr::width(word);
-        if current_line.is_empty() {
-            current_line.push_str(word);
-            current_len = word_len;
-        } else if current_len + 1 + word_len <= max_width {
-            current_line.push(' ');
-            current_line.push_str(word);
-            current_len += 1 + word_len;
-        } else {
-            lines.push(current_line);
-            current_line = word.to_string();
-            current_len = word_len;
-        }
-    }
-
-    if !current_line.is_empty() {
-        lines.push(current_line);
-    }
-
-    lines
 }

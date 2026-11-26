@@ -36,3 +36,31 @@ pub fn truncate_with_ellipsis(s: &str, max_width: usize, ellipsis: &str) -> Stri
     let byte_end = take_width_bytes(s, max_width - ell_w);
     format!("{}{}", &s[..byte_end], ellipsis)
 }
+
+pub fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
+    let mut lines = Vec::new();
+    let mut current_line = String::new();
+    let mut current_len = 0;
+
+    for word in text.split_whitespace() {
+        let word_len = UnicodeWidthStr::width(word);
+        if current_line.is_empty() {
+            current_line.push_str(word);
+            current_len = word_len;
+        } else if current_len + 1 + word_len <= max_width {
+            current_line.push(' ');
+            current_line.push_str(word);
+            current_len += 1 + word_len;
+        } else {
+            lines.push(current_line);
+            current_line = word.to_string();
+            current_len = word_len;
+        }
+    }
+
+    if !current_line.is_empty() {
+        lines.push(current_line);
+    }
+
+    lines
+}
