@@ -217,8 +217,7 @@ pub fn render_settings_modal(f: &mut Frame, app: &App, size: Rect) {
         ]));
     }
 
-    let footer_lines = build_settings_footer(inner.width, app.modals.settings_modal.cursor_idx);
-    let (list_area, footer_area) = compute_settings_areas(inner, footer_lines.len() as u16);
+    let (list_area, footer_area, footer_lines) = compute_settings_layout(inner, app.modals.settings_modal.cursor_idx);
 
     let scroll =
         compute_settings_scroll(app.modals.settings_modal.cursor_idx, list_area.height as usize);
@@ -230,16 +229,16 @@ pub fn render_settings_modal(f: &mut Frame, app: &App, size: Rect) {
     }
 }
 
-fn build_settings_footer(inner_width: u16, cursor_idx: usize) -> Vec<Line<'static>> {
+fn compute_settings_layout(inner: Rect, cursor_idx: usize) -> (Rect, Rect, Vec<Line<'static>>) {
     let mut footer = Vec::new();
-    let div_w = (inner_width as usize).saturating_sub(4);
+    let div_w = (inner.width as usize).saturating_sub(4);
     footer.push(Line::from(vec![
         Span::styled("  ", Style::default()),
         Span::styled("─".repeat(div_w), Style::default().fg(theme::DARK_GREY)),
     ]));
 
     if let Some(item) = SettingItem::ALL.get(cursor_idx).copied() {
-        let desc_w = (inner_width as usize).saturating_sub(4).max(10);
+        let desc_w = (inner.width as usize).saturating_sub(4).max(10);
         for desc_line in crate::ui::wrap_text(item.description(), desc_w) {
             footer.push(Line::from(vec![
                 Span::styled("   ", Style::default()),
@@ -255,19 +254,19 @@ fn build_settings_footer(inner_width: u16, cursor_idx: usize) -> Vec<Line<'stati
             Style::default().fg(theme::GREY),
         ),
     ]));
-    footer
-}
 
-fn compute_settings_areas(inner: Rect, footer_len: u16) -> (Rect, Rect) {
+    let footer_len = footer.len() as u16;
     let footer_h = if inner.height > footer_len + 2 {
         footer_len
     } else {
         0
     };
     let list_h = inner.height.saturating_sub(footer_h);
-    let list_area = Rect::new(inner.x, inner.y, inner.width, list_h);
-    let footer_area = Rect::new(inner.x, inner.y + list_h, inner.width, footer_h);
-    (list_area, footer_area)
+    (
+        Rect::new(inner.x, inner.y, inner.width, list_h),
+        Rect::new(inner.x, inner.y + list_h, inner.width, footer_h),
+        footer,
+    )
 }
 
 fn bool_span(val: bool) -> Span<'static> {
@@ -326,8 +325,7 @@ pub fn get_setting_row_at(
     target_y: u16,
     cursor_idx: usize,
 ) -> Option<(usize, SettingItem, u16)> {
-    let footer_lines = build_settings_footer(inner.width, cursor_idx);
-    let (list_area, _) = compute_settings_areas(inner, footer_lines.len() as u16);
+    let (list_area, _, _) = compute_settings_layout(inner, cursor_idx);
     if target_y < list_area.y || target_y >= list_area.y + list_area.height {
         return None;
     }
