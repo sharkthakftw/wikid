@@ -43,6 +43,16 @@ cd wikid
 makepkg -si
 ```
 
+### nix (via flake)
+
+```bash
+# run directly without installing
+nix run github:sharkthakftw/wikid
+
+# install to profile
+nix profile add github:sharkthakftw/wikid
+```
+
 ### NetBSD (from the official repository)
 
 ```bash
