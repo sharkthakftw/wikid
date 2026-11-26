@@ -68,113 +68,75 @@ pub fn render_on_this_day_modal(
 
     let avail_w = (modal_area.width as usize).saturating_sub(4);
 
-    let dummy_cache;
-    let cache_ref = if let Some(modal_state) = &app.modals.daily_feed_modal {
-        let mut cache = modal_state.cache.borrow_mut();
+    let Some(modal_state) = &app.modals.daily_feed_modal else {
+        return;
+    };
+    let mut cache = modal_state.cache.borrow_mut();
+    let parsed_list = match otd_tab {
+        OnThisDayTab::Events => &mut cache.otd_events_parsed,
+        OnThisDayTab::Births => &mut cache.otd_births_parsed,
+        OnThisDayTab::Deaths => &mut cache.otd_deaths_parsed,
+        OnThisDayTab::Holidays => &mut cache.otd_holidays_parsed,
+    };
+
+    if parsed_list.len() != events_slice.len() {
+        *parsed_list = events_slice
+            .iter()
+            .map(|ev| {
+                let (chunks, links) = parse_onthisday_event(&ev.text, &ev.pages);
+                crate::ui::modals::daily_feed::ParsedStory { chunks, links }
+            })
+            .collect();
+        cache.otd_cached_width = 0;
+    }
+
+    if cache.otd_cached_tab != Some(otd_tab) || cache.otd_cached_width != avail_w {
+        let current_year = crate::api::daily_feed::utc_today().0 as i32;
         let parsed_list = match otd_tab {
-            OnThisDayTab::Events => &mut cache.otd_events_parsed,
-            OnThisDayTab::Births => &mut cache.otd_births_parsed,
-            OnThisDayTab::Deaths => &mut cache.otd_deaths_parsed,
-            OnThisDayTab::Holidays => &mut cache.otd_holidays_parsed,
+            OnThisDayTab::Events => &cache.otd_events_parsed,
+            OnThisDayTab::Births => &cache.otd_births_parsed,
+            OnThisDayTab::Deaths => &cache.otd_deaths_parsed,
+            OnThisDayTab::Holidays => &cache.otd_holidays_parsed,
         };
 
-        if parsed_list.len() != events_slice.len() {
-            *parsed_list = events_slice
-                .iter()
-                .map(|ev| {
-                    let (chunks, links) = parse_onthisday_event(&ev.text, &ev.pages);
-                    crate::ui::modals::daily_feed::ParsedStory { chunks, links }
-                })
-                .collect();
-            cache.otd_cached_width = 0;
-        }
-
-        if cache.otd_cached_tab != Some(otd_tab) || cache.otd_cached_width != avail_w {
-            let current_year = crate::api::daily_feed::utc_today().0 as i32;
-            let parsed_list = match otd_tab {
-                OnThisDayTab::Events => &cache.otd_events_parsed,
-                OnThisDayTab::Births => &cache.otd_births_parsed,
-                OnThisDayTab::Deaths => &cache.otd_deaths_parsed,
-                OnThisDayTab::Holidays => &cache.otd_holidays_parsed,
-            };
-
-            cache.otd_wrapped = events_slice
-                .iter()
-                .zip(parsed_list.iter())
-                .map(|(event, parsed)| {
-                    let (year_str, elapsed_str) = match event.year {
-                        Some(y) if y < 0 => {
-                            let yrs = current_year + y.abs();
-                            (format!("{} BC", y.abs()), format!("({} yrs ago) ", yrs))
-                        }
-                        Some(y) => {
-                            let yrs = current_year - y;
-                            if yrs == 0 {
-                                (format!("{}", y), "(this year) ".to_string())
-                            } else {
-                                (format!("{}", y), format!("({} yrs ago) ", yrs))
-                            }
-                        }
-                        None => ("Holiday".to_string(), String::new()),
-                    };
-                    let badge_prefix = format!("[ {} ] {}", year_str, elapsed_str);
-                    let badge_len = badge_prefix.chars().count();
-                    let text_w = avail_w.saturating_sub(badge_len + 3);
-                    let wrapped = wrap_story_spans(&parsed.chunks, text_w + 3);
-
-                    crate::ui::modals::daily_feed::CachedWrappedItem {
-                        links: parsed.links.clone(),
-                        wrapped_lines: wrapped,
-                        year_str,
-                        elapsed_str,
+        cache.otd_wrapped = events_slice
+            .iter()
+            .zip(parsed_list.iter())
+            .map(|(event, parsed)| {
+                let (year_str, elapsed_str) = match event.year {
+                    Some(y) if y < 0 => {
+                        let yrs = current_year + y.abs();
+                        (format!("{} BC", y.abs()), format!("({} yrs ago) ", yrs))
                     }
-                })
-                .collect();
-            cache.otd_cached_tab = Some(otd_tab);
-            cache.otd_cached_width = avail_w;
-        }
-
-        drop(cache);
-        modal_state.cache.borrow()
-    } else {
-        let current_year = crate::api::daily_feed::utc_today().0 as i32;
-        dummy_cache = std::cell::RefCell::new(crate::ui::modals::daily_feed::DailyFeedCache {
-            otd_wrapped: events_slice
-                .iter()
-                .map(|event| {
-                    let (chunks, links) = parse_onthisday_event(&event.text, &event.pages);
-                    let (year_str, elapsed_str) = match event.year {
-                        Some(y) if y < 0 => {
-                            let yrs = current_year + y.abs();
-                            (format!("{} BC", y.abs()), format!("({} yrs ago) ", yrs))
+                    Some(y) => {
+                        let yrs = current_year - y;
+                        if yrs == 0 {
+                            (format!("{}", y), "(this year) ".to_string())
+                        } else {
+                            (format!("{}", y), format!("({} yrs ago) ", yrs))
                         }
-                        Some(y) => {
-                            let yrs = current_year - y;
-                            if yrs == 0 {
-                                (format!("{}", y), "(this year) ".to_string())
-                            } else {
-                                (format!("{}", y), format!("({} yrs ago) ", yrs))
-                            }
-                        }
-                        None => ("Holiday".to_string(), String::new()),
-                    };
-                    let badge_prefix = format!("[ {} ] {}", year_str, elapsed_str);
-                    let badge_len = badge_prefix.chars().count();
-                    let text_w = avail_w.saturating_sub(badge_len + 3);
-                    let wrapped = wrap_story_spans(&chunks, text_w + 3);
-
-                    crate::ui::modals::daily_feed::CachedWrappedItem {
-                        links,
-                        wrapped_lines: wrapped,
-                        year_str,
-                        elapsed_str,
                     }
-                })
-                .collect(),
-            ..Default::default()
-        });
-        dummy_cache.borrow()
-    };
+                    None => ("Holiday".to_string(), String::new()),
+                };
+                let badge_prefix = format!("[ {} ] {}", year_str, elapsed_str);
+                let badge_len = badge_prefix.chars().count();
+                let text_w = avail_w.saturating_sub(badge_len + 3);
+                let wrapped = wrap_story_spans(&parsed.chunks, text_w + 3);
+
+                crate::ui::modals::daily_feed::CachedWrappedItem {
+                    links: parsed.links.clone(),
+                    wrapped_lines: wrapped,
+                    year_str,
+                    elapsed_str,
+                }
+            })
+            .collect();
+        cache.otd_cached_tab = Some(otd_tab);
+        cache.otd_cached_width = avail_w;
+    }
+
+    drop(cache);
+    let cache_ref = modal_state.cache.borrow();
 
     let selected_event = events_slice.get(selected_idx);
     let focused_page = selected_event.and_then(|ev| {

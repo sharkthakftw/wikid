@@ -53,61 +53,41 @@ pub fn render_news_modal(
         let avail_w = (modal_area.width as usize).saturating_sub(4);
         let mut row_counter = 0;
 
-        let dummy_cache;
-        let cache_ref = if let Some(modal_state) = &app.modals.daily_feed_modal {
-            let mut cache = modal_state.cache.borrow_mut();
-            if cache.news_parsed.len() != feed.news.len() {
-                cache.news_parsed = feed
-                    .news
-                    .iter()
-                    .map(|item| {
-                        let raw_story = item.story.as_deref().unwrap_or("");
-                        let (chunks, links) = parse_story_html(raw_story);
-                        crate::ui::modals::daily_feed::ParsedStory { chunks, links }
-                    })
-                    .collect();
-                cache.news_width = 0;
-            }
-
-            if cache.news_width != avail_w {
-                cache.news_wrapped = cache
-                    .news_parsed
-                    .iter()
-                    .map(|parsed| {
-                        let wrapped = wrap_story_spans(&parsed.chunks, avail_w);
-                        crate::ui::modals::daily_feed::CachedWrappedItem {
-                            links: parsed.links.clone(),
-                            wrapped_lines: wrapped,
-                            year_str: String::new(),
-                            elapsed_str: String::new(),
-                        }
-                    })
-                    .collect();
-                cache.news_width = avail_w;
-            }
-            drop(cache);
-            modal_state.cache.borrow()
-        } else {
-            dummy_cache = std::cell::RefCell::new(crate::ui::modals::daily_feed::DailyFeedCache {
-                news_wrapped: feed
-                    .news
-                    .iter()
-                    .map(|item| {
-                        let raw_story = item.story.as_deref().unwrap_or("");
-                        let (chunks, links) = parse_story_html(raw_story);
-                        let wrapped = wrap_story_spans(&chunks, avail_w);
-                        crate::ui::modals::daily_feed::CachedWrappedItem {
-                            links,
-                            wrapped_lines: wrapped,
-                            year_str: String::new(),
-                            elapsed_str: String::new(),
-                        }
-                    })
-                    .collect(),
-                ..Default::default()
-            });
-            dummy_cache.borrow()
+        let Some(modal_state) = &app.modals.daily_feed_modal else {
+            return;
         };
+        let mut cache = modal_state.cache.borrow_mut();
+        if cache.news_parsed.len() != feed.news.len() {
+            cache.news_parsed = feed
+                .news
+                .iter()
+                .map(|item| {
+                    let raw_story = item.story.as_deref().unwrap_or("");
+                    let (chunks, links) = parse_story_html(raw_story);
+                    crate::ui::modals::daily_feed::ParsedStory { chunks, links }
+                })
+                .collect();
+            cache.news_width = 0;
+        }
+
+        if cache.news_width != avail_w {
+            cache.news_wrapped = cache
+                .news_parsed
+                .iter()
+                .map(|parsed| {
+                    let wrapped = wrap_story_spans(&parsed.chunks, avail_w);
+                    crate::ui::modals::daily_feed::CachedWrappedItem {
+                        links: parsed.links.clone(),
+                        wrapped_lines: wrapped,
+                        year_str: String::new(),
+                        elapsed_str: String::new(),
+                    }
+                })
+                .collect();
+            cache.news_width = avail_w;
+        }
+        drop(cache);
+        let cache_ref = modal_state.cache.borrow();
 
         for cached_item in &cache_ref.news_wrapped {
             line_offsets.push(lines.len());
