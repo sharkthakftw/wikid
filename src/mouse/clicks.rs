@@ -211,36 +211,27 @@ fn handle_modal_left_click(
         return true;
     }
 
-    if app.input_mode == InputMode::Help {
-        let help_area = crate::ui::modals::compute_help_modal_area(size);
-        if !rect_contains(help_area, col, row) {
+    match app.input_mode {
+        InputMode::Help if !rect_contains(crate::ui::modals::compute_help_modal_area(size), col, row) => {
             app.input_mode = InputMode::Normal;
+            return true;
         }
-        return true;
-    }
-
-    if app.input_mode == InputMode::QrModal {
-        let qr_area = crate::ui::modals::compute_qr_modal_area(size);
-        if !rect_contains(qr_area, col, row) {
+        InputMode::QrModal if !rect_contains(crate::ui::modals::compute_qr_modal_area(size), col, row) => {
             app.close_qr_modal();
+            return true;
         }
-        return true;
-    }
-
-    if app.input_mode == InputMode::ImageModal {
-        let image_area = crate::ui::modals::compute_image_modal_area(size);
-        if !rect_contains(image_area, col, row) {
+        InputMode::ImageModal if !rect_contains(crate::ui::modals::compute_image_modal_area(size), col, row) => {
             app.close_image_modal();
+            return true;
         }
-        return true;
-    }
-
-    if app.input_mode == InputMode::Search {
-        let search_area = crate::ui::modals::search::compute_search_modal_area(size);
-        if !rect_contains(search_area, col, row) {
+        InputMode::Search if !rect_contains(crate::ui::modals::search::compute_search_modal_area(size), col, row) => {
             app.input_mode = InputMode::Normal;
+            return true;
         }
-        return true;
+        InputMode::Help | InputMode::QrModal | InputMode::ImageModal | InputMode::Search => {
+            return true;
+        }
+        _ => {}
     }
 
     if app.input_mode == InputMode::CreateNewList {
