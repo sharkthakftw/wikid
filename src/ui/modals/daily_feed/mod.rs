@@ -114,9 +114,6 @@ pub fn get_feed_entries(app: &App, kind: DailyFeedKind) -> Vec<FeedEntry> {
                     .first()
                     .map(|p| p.title.clone())
                     .unwrap_or_default();
-                if target.is_empty() {
-                    continue;
-                }
                 let year_str = match event.year {
                     Some(y) if y < 0 => format!("{} BC", y.abs()),
                     Some(y) => format!("{}", y),

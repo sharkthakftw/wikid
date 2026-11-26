@@ -204,8 +204,17 @@ pub fn wrap_story_spans(chunks: &[StyledChunk], max_width: usize) -> Vec<Vec<(St
 }
 
 fn normalize_search_str(s: &str) -> String {
-    s.replace(['\u{a0}', '\u{202f}'], " ")
+    decode_html_entities(s)
+        .replace(['\u{a0}', '\u{202f}'], " ")
         .replace(['–', '—', '−'], "-")
+        .replace(['\u{2018}', '\u{2019}', '\u{201b}'], "'")
+        .replace(['\u{201c}', '\u{201d}'], "\"")
+}
+
+fn char_eq_norm(a: char, b: char) -> bool {
+    let a_norm = if a == '-' { ' ' } else { a };
+    let b_norm = if b == '-' { ' ' } else { b };
+    a_norm.eq_ignore_ascii_case(&b_norm) || a_norm.to_lowercase().eq(b_norm.to_lowercase())
 }
 
 fn find_case_insensitive_matches(text: &str, term: &str) -> Vec<(usize, usize)> {
@@ -220,22 +229,47 @@ fn find_case_insensitive_matches(text: &str, term: &str) -> Vec<(usize, usize)> 
         return matches;
     }
 
+    let allow_plural = term_chars.len() >= 4
+        && term_chars
+            .last()
+            .is_some_and(|c| c.is_alphanumeric() && !c.eq_ignore_ascii_case(&'s'));
+
     let mut i = 0;
     while i + term_chars.len() <= text_chars.len() {
+        let left_ok = i == 0 || !text_chars[i - 1].1.is_alphanumeric();
+        if !left_ok {
+            i += 1;
+            continue;
+        }
+
         let is_match = text_chars[i..i + term_chars.len()]
             .iter()
             .zip(&term_chars)
-            .all(|((_, tc), mc)| tc.to_lowercase().eq(mc.to_lowercase()));
+            .all(|((_, tc), mc)| char_eq_norm(*tc, *mc));
 
         if is_match {
+            let mut end_idx = i + term_chars.len();
+            if end_idx < text_chars.len() && text_chars[end_idx].1.is_alphanumeric() {
+                if allow_plural
+                    && text_chars[end_idx].1.eq_ignore_ascii_case(&'s')
+                    && (end_idx + 1 == text_chars.len()
+                        || !text_chars[end_idx + 1].1.is_alphanumeric())
+                {
+                    end_idx += 1;
+                } else {
+                    i += 1;
+                    continue;
+                }
+            }
+
             let start_byte = text_chars[i].0;
-            let end_byte = if i + term_chars.len() < text_chars.len() {
-                text_chars[i + term_chars.len()].0
+            let end_byte = if end_idx < text_chars.len() {
+                text_chars[end_idx].0
             } else {
                 text.len()
             };
             matches.push((start_byte, end_byte));
-            i += term_chars.len();
+            i = end_idx;
         } else {
             i += 1;
         }
@@ -243,27 +277,66 @@ fn find_case_insensitive_matches(text: &str, term: &str) -> Vec<(usize, usize)> 
     matches
 }
 
+fn strip_prefix_icase<'a>(s: &'a str, prefix: &str) -> Option<&'a str> {
+    if s.get(..prefix.len())
+        .is_some_and(|p| p.eq_ignore_ascii_case(prefix))
+    {
+        Some(&s[prefix.len()..])
+    } else {
+        None
+    }
+}
+
+fn strip_suffix_icase<'a>(s: &'a str, suffix: &str) -> Option<&'a str> {
+    let split_at = s.len().checked_sub(suffix.len())?;
+    if s.get(split_at..)
+        .is_some_and(|p| p.eq_ignore_ascii_case(suffix))
+    {
+        Some(&s[..split_at])
+    } else {
+        None
+    }
+}
+
 pub fn parse_onthisday_event(
     text: &str,
     pages: &[crate::api::daily_feed::PageSummary],
 ) -> (Vec<StyledChunk>, Vec<String>) {
-    let mut links = Vec::new();
-    let mut match_targets: Vec<(String, String, usize)> = Vec::new();
+    let mut match_targets: Vec<(String, String)> = Vec::new();
 
     for page in pages {
         let canonical = &page.title;
         let display = page.display_title();
-        let link_idx = links.len();
-        links.push(canonical.clone());
-
         let norm_display = normalize_search_str(&display);
+        match_targets.push((norm_display.clone(), canonical.clone()));
+
         let base_title = norm_display
             .split('(')
             .next()
             .unwrap_or(&norm_display)
             .trim();
-        if !base_title.is_empty() {
-            match_targets.push((base_title.to_string(), canonical.clone(), link_idx));
+        if base_title != norm_display && !base_title.is_empty() {
+            match_targets.push((base_title.to_string(), canonical.clone()));
+        }
+
+        let mut bases = vec![base_title];
+        if let Some((before_comma, _)) = base_title.split_once(',') {
+            let trimmed = before_comma.trim();
+            if trimmed.chars().count() >= 3 {
+                match_targets.push((trimmed.to_string(), canonical.clone()));
+                bases.push(trimmed);
+            }
+        }
+
+        for b in bases {
+            for art in ["the ", "a ", "an "] {
+                if let Some(rest) = strip_prefix_icase(b, art)
+                    && rest.chars().count() >= 3
+                {
+                    match_targets.push((rest.to_string(), canonical.clone()));
+                }
+            }
+
             for suffix in [
                 " line",
                 " battle",
@@ -272,46 +345,52 @@ pub fn parse_onthisday_event(
                 " treaty",
                 " expedition",
             ] {
-                if let Some(stripped) = base_title.strip_suffix(suffix)
-                    && stripped.len() >= 3 {
-                        match_targets.push((stripped.to_string(), canonical.clone(), link_idx));
-                    }
+                if let Some(stripped) = strip_suffix_icase(b, suffix)
+                    && stripped.chars().count() >= 3
+                {
+                    match_targets.push((stripped.to_string(), canonical.clone()));
+                }
             }
-        }
-        if base_title != norm_display && !norm_display.is_empty() {
-            match_targets.push((norm_display.to_string(), canonical.clone(), link_idx));
         }
     }
 
-    match_targets.sort_by_key(|a| std::cmp::Reverse(a.0.len()));
+    match_targets.sort_by_key(|a| std::cmp::Reverse(a.0.chars().count()));
     let clean_text = normalize_search_str(text);
 
-    let mut ranges: Vec<(usize, usize, usize, String)> = Vec::new();
-    for (term, canonical, l_idx) in &match_targets {
+    let mut ranges: Vec<(usize, usize, String)> = Vec::new();
+    for (term, canonical) in &match_targets {
         for (actual_start, actual_end) in find_case_insensitive_matches(&clean_text, term) {
-            let overlaps = ranges.iter().any(|(s, e, _, _)| {
+            let overlaps = ranges.iter().any(|(s, e, _)| {
                 (actual_start >= *s && actual_start < *e)
                     || (actual_end > *s && actual_end <= *e)
                     || (actual_start <= *s && actual_end >= *e)
             });
 
             if !overlaps {
-                ranges.push((actual_start, actual_end, *l_idx, canonical.clone()));
+                ranges.push((actual_start, actual_end, canonical.clone()));
             }
         }
     }
 
     ranges.sort_by_key(|r| r.0);
 
+    let mut links = Vec::new();
     let mut chunks = Vec::new();
     let mut last_idx = 0;
-    for (start, end, l_idx, target) in ranges {
+    for (start, end, target) in ranges {
         if start > last_idx {
             chunks.push(StyledChunk {
                 text: clean_text[last_idx..start].to_string(),
                 style: SpanStyle::Normal,
             });
         }
+        let l_idx = if let Some(pos) = links.iter().position(|t| t == &target) {
+            pos
+        } else {
+            let idx = links.len();
+            links.push(target.clone());
+            idx
+        };
         chunks.push(StyledChunk {
             text: clean_text[start..end].to_string(),
             style: SpanStyle::Link {
@@ -328,16 +407,18 @@ pub fn parse_onthisday_event(
         });
     }
 
-    if chunks.iter().all(|c| matches!(c.style, SpanStyle::Normal))
-        && let Some(first_page) = pages.first() {
-            chunks = vec![StyledChunk {
-                text: clean_text,
-                style: SpanStyle::Link {
-                    link_idx: 0,
-                    title: first_page.title.clone(),
-                },
-            }];
-        }
+    if links.is_empty()
+        && let Some(first_page) = pages.first()
+    {
+        links.push(first_page.title.clone());
+        chunks = vec![StyledChunk {
+            text: clean_text,
+            style: SpanStyle::Link {
+                link_idx: 0,
+                title: first_page.title.clone(),
+            },
+        }];
+    }
 
     (chunks, links)
 }
