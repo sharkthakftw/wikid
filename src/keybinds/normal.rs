@@ -249,9 +249,6 @@ pub fn handle_normal_mode(app: &mut App, key: KeyEvent, term_width: u16, term_he
             KeyCode::Char('Y') => {
                 app.copy_article_link();
             }
-            KeyCode::Char('U') => {
-                app.check_for_updates();
-            }
             KeyCode::Char('?') => {
                 app.toggle_help_popup();
             }

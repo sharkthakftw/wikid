@@ -197,10 +197,21 @@ pub fn get_center_spans(
             {
                 build_history_trail(active_pane, available_width)
             } else if matches!(active_pane.content, PaneContent::Empty) {
-                vec![Span::styled(
-                    "ctrl-s search · F feed · , settings · ? help · q quit",
-                    Style::default().fg(theme::GREY),
-                )]
+                if let Some(tag) = &app.available_update {
+                    vec![Span::styled(
+                        format!(
+                            "update available: {} (current: v{}) · run cargo install wikid",
+                            tag,
+                            env!("CARGO_PKG_VERSION")
+                        ),
+                        Style::default().fg(theme::YELLOW).add_modifier(Modifier::BOLD),
+                    )]
+                } else {
+                    vec![Span::styled(
+                        "ctrl-s search · F feed · , settings · ? help · q quit",
+                        Style::default().fg(theme::GREY),
+                    )]
+                }
             } else {
                 let has_spoken =
                     if let PaneContent::ArticleText { parsed_doc, .. } = &active_pane.content {

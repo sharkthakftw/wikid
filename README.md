@@ -122,7 +122,6 @@ make install
 | **seek audio** | `<` / `>` | scrub audio backward / forward 10s |
 | **command palette** | `:` / `ctrl-p` | open sioyek-style command palette modal |
 | **restore session** | `S` | restore previous session (from home tab) |
-| **check for updates** | `U` | query github releases for latest tag |
 | **settings modal** | `,` | open interactive settings modal |
 | **help popup** | `?` | toggle keybindings cheat sheet |
 | **quit** | `q` | exit wikid |

@@ -63,6 +63,7 @@ pub struct App {
     pub running: bool,
     pub input_mode: InputMode,
     pub status_message: StatusMessageState,
+    pub available_update: Option<String>,
     pub wiki_stats: crate::api::WikiStatistics,
     pub daily_feed: Option<crate::api::DailyFeed>,
     pub pending_open_tfa: bool,
@@ -104,6 +105,7 @@ impl App {
             running: true,
             input_mode: InputMode::Normal,
             status_message: StatusMessageState::default(),
+            available_update: None,
             wiki_stats: crate::api::WikiStatistics::default(),
             daily_feed: cached_feed,
             pending_open_tfa: false,
@@ -156,6 +158,9 @@ impl App {
         if app.workspace.tabs.is_empty() {
             app.workspace.tabs.push(Tab::new("home".to_string(), 0));
         }
+        app.network.send(crate::api::NetworkCommand::CheckForUpdates {
+            timeout: app.user_data.config.network.timeout,
+        });
         app
     }
 

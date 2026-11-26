@@ -259,12 +259,13 @@ impl App {
                     let remote_ver = parse_semver_parts(&tag);
                     let current_ver = parse_semver_parts(env!("CARGO_PKG_VERSION"));
                     if remote_ver > current_ver {
+                        self.available_update = Some(tag.clone());
                         self.set_status_message(format!(
                             "update available: {} (current: v{}) · run cargo install wikid",
                             tag,
                             env!("CARGO_PKG_VERSION")
                         ));
-                    } else {
+                    } else if self.status_message.get() == Some("checking for updates...") {
                         self.set_status_message(format!(
                             "wikid is up to date (v{})",
                             env!("CARGO_PKG_VERSION")
@@ -272,7 +273,9 @@ impl App {
                     }
                 }
                 Err(err) => {
-                    self.set_status_message(format!("update check failed: {}", err));
+                    if self.status_message.get() == Some("checking for updates...") {
+                        self.set_status_message(format!("update check failed: {}", err));
+                    }
                 }
             },
             NetworkEvent::CategoryMembersLoaded { category, members } => {
