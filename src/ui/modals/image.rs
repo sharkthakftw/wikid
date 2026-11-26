@@ -74,8 +74,30 @@ pub fn render_image_modal(f: &mut Frame, app: &mut App, size: Rect) {
         return;
     }
 
-    let has_caption = modal.caption.as_ref().is_some_and(|c| !c.trim().is_empty());
-    let footer_h = if has_caption { 2u16 } else { 0u16 };
+    let mut caption_lines: Vec<String> = modal
+        .caption
+        .as_ref()
+        .filter(|c| !c.trim().is_empty())
+        .map(|c| {
+            let max_w = (inner.width as usize).saturating_sub(4);
+            crate::ui::wrap_text(c, max_w)
+        })
+        .unwrap_or_default();
+
+    let max_caption_rows = (inner.height / 3).clamp(1, 5) as usize;
+    if caption_lines.len() > max_caption_rows {
+        caption_lines.truncate(max_caption_rows);
+        if let Some(last) = caption_lines.last_mut() {
+            let max_w = (inner.width as usize).saturating_sub(4);
+            *last = crate::ui::truncate_with_ellipsis(last, max_w, "…");
+        }
+    }
+
+    let footer_h = if caption_lines.is_empty() {
+        0u16
+    } else {
+        (caption_lines.len() as u16) + 1
+    };
     let canvas_h = inner.height.saturating_sub(footer_h);
     let canvas_w = inner.width;
 
@@ -152,30 +174,25 @@ pub fn render_image_modal(f: &mut Frame, app: &mut App, size: Rect) {
         f.render_widget(p, canvas_rect);
     }
 
-    if has_caption && footer_h > 0
-        && let Some(caption) = &modal.caption {
-            let max_c = (inner.width as usize).saturating_sub(4);
-            let c_display = if caption.chars().count() > max_c {
-                let s: String = caption.chars().take(max_c).collect();
-                format!("{}…", s)
-            } else {
-                caption.clone()
-            };
-            let footer_lines = vec![
-                Line::from(""),
+    if footer_h > 0 && !caption_lines.is_empty() {
+        let mut footer_lines = Vec::with_capacity(caption_lines.len() + 1);
+        footer_lines.push(Line::from(""));
+        for line in caption_lines {
+            footer_lines.push(
                 Line::from(vec![Span::styled(
-                    c_display,
+                    line,
                     Style::default().fg(theme::FG).italic(),
                 )])
                 .alignment(Alignment::Center),
-            ];
-            let footer_rect = Rect::new(
-                inner.x,
-                inner.y + canvas_h,
-                inner.width,
-                footer_h.min(inner.height.saturating_sub(canvas_h)),
             );
-            let footer_p = Paragraph::new(footer_lines).style(Style::default().bg(theme::BG));
-            f.render_widget(footer_p, footer_rect);
         }
+        let footer_rect = Rect::new(
+            inner.x,
+            inner.y + canvas_h,
+            inner.width,
+            footer_h.min(inner.height.saturating_sub(canvas_h)),
+        );
+        let footer_p = Paragraph::new(footer_lines).style(Style::default().bg(theme::BG));
+        f.render_widget(footer_p, footer_rect);
+    }
 }
