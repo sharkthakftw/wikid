@@ -190,6 +190,7 @@ wikid can also be run headlessly from the command line without opening the tui:
 
 - special thanks to [xikipedia](https://github.com/rebane2001/xikipedia) for inspiring the recommendation feed feature!
 - thanks to [0323pin](https://github.com/0323pin) for packaging and maintaining the NetBSD package.
+- thanks to [asitos](https://github.com/asitos) for maintaining the nix flake.
 
 ## license
 
